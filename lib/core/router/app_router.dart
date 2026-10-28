@@ -7,6 +7,7 @@ import '../../features/cartoes/cartao_form_page.dart';
 import '../../features/compromissos/compromisso_form_page.dart';
 import '../../features/compromissos/compromissos_page.dart';
 import '../../features/compromissos/receita_form_page.dart';
+import '../../features/configuracoes/configuracoes_page.dart';
 import '../../features/contas/conta_form_page.dart';
 import '../../features/contas/contas_page.dart';
 import '../../features/lancamentos/lancamento_form_page.dart';
@@ -35,6 +36,7 @@ abstract final class Rotas {
   // Dentro da aba Mais.
   static const contas = '/mais/contas';
   static const compromissos = '/mais/compromissos';
+  static const configuracoes = '/mais/configuracoes';
 
   // Formulários em tela cheia (por cima da barra inferior).
   static const novoLancamento = '/lancamento/novo';
@@ -214,6 +216,10 @@ GoRouter criarRouter({
               builder: (_, _) => const MaisPage(),
               routes: [
                 GoRoute(path: 'contas', builder: (_, _) => const ContasPage()),
+                GoRoute(
+                  path: 'configuracoes',
+                  builder: (_, _) => const ConfiguracoesPage(),
+                ),
                 GoRoute(
                   path: 'compromissos',
                   builder: (_, _) => const CompromissosPage(),

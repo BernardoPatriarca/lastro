@@ -16,6 +16,7 @@ import '../../data/servicos/servicos.dart';
 import '../../domain/datas.dart';
 import '../../domain/enums.dart';
 import '../../domain/parcelas.dart';
+import '../cartoes/impacto_credito.dart';
 import '../cartoes/previa_compra.dart';
 import '../categorias/seletor_categoria.dart';
 import 'lancamento_acoes.dart';
@@ -188,6 +189,13 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
       return;
     }
 
+    // Compra nova no crédito: aplica o comportamento do crédito seguro
+    // (avisar / confirmar / bloquear) antes de travar o botão.
+    if (_credito && !_edicao) {
+      final cartao = cartoes.firstWhere((c) => c.id == cartaoId);
+      if (!await _liberadoPeloCreditoSeguro(cartao)) return;
+    }
+
     setState(() => _salvando = true);
     try {
       final servico = ref.read(servicoLancamentosProvider);
@@ -199,6 +207,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
 
       if (original != null && _editandoCredito && !_restrito) {
         if (_compra != null) {
+          if (!mounted) return;
           final escopo = await perguntarEscopo(
             context,
             titulo: 'Aplicar a alteração em quais parcelas?',
@@ -300,6 +309,56 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
       if (mounted) _aviso(e.mensagem);
     } finally {
       if (mounted) setState(() => _salvando = false);
+    }
+  }
+
+  /// Aplica o comportamento configurado quando a compra estoura o crédito
+  /// seguro (CLAUDE.md 5.1): avisar, confirmar ou bloquear.
+  Future<bool> _liberadoPeloCreditoSeguro(Cartao cartao) async {
+    final impacto = impactoDaCompra(
+      ref,
+      cartao: cartao,
+      valor: _valor.centavos,
+      parcelas: _parcelas,
+      data: _data,
+    );
+    if (!impacto.estoura) return true;
+    final valorAcima = Moeda.formatar(impacto.acimaDoSaldo);
+    switch (ref.read(ajustesProvider).comportamentoEstouro) {
+      case ComportamentoEstouro.avisar:
+        return true;
+      case ComportamentoEstouro.bloquear:
+        _aviso('Compra bloqueada: a fatura ficaria $valorAcima acima do seu '
+            'saldo. Mude isso em Configurações › Crédito seguro.');
+        return false;
+      case ComportamentoEstouro.confirmar:
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: Icon(Icons.warning_amber_rounded, color: Theme.of(ctx).colorScheme.error),
+            title: const Text('Passou do seu saldo'),
+            content: Text(
+              'Essa compra deixa a fatura $valorAcima acima do seu saldo. '
+              'Você não terá dinheiro para pagá-la. Lançar mesmo assim?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(120, 44),
+                  backgroundColor: Theme.of(ctx).colorScheme.error,
+                  foregroundColor: Theme.of(ctx).colorScheme.onError,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Lançar mesmo assim'),
+              ),
+            ],
+          ),
+        );
+        return ok == true;
     }
   }
 
@@ -533,11 +592,25 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
         const SizedBox(height: 16),
         ListenableBuilder(
           listenable: _valor,
-          builder: (_, _) => PreviaCompra(
-            cartao: cartao,
-            valorTotal: _valor.centavos,
-            parcelas: _edicao ? 1 : _parcelas,
-            data: _data,
+          builder: (_, _) => Column(
+            children: [
+              PreviaCompra(
+                cartao: cartao,
+                valorTotal: _valor.centavos,
+                parcelas: _edicao ? 1 : _parcelas,
+                data: _data,
+              ),
+              // O impacto vale para compras novas (já lançadas contam no saldo).
+              if (!_edicao) ...[
+                const SizedBox(height: 10),
+                ImpactoCredito(
+                  cartao: cartao,
+                  valor: _valor.centavos,
+                  parcelas: _parcelas,
+                  data: _data,
+                ),
+              ],
+            ],
           ),
         ),
       ],

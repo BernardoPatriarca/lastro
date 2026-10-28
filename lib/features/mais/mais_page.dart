@@ -26,6 +26,12 @@ class MaisPage extends StatelessWidget {
             subtitulo: 'Gastos fixos, parcelados e receitas recorrentes',
             onTap: () => context.push(Rotas.compromissos),
           ),
+          _Item(
+            icone: Icons.settings_rounded,
+            titulo: 'Configurações',
+            subtitulo: 'Crédito seguro, tema, segurança e privacidade',
+            onTap: () => context.push(Rotas.configuracoes),
+          ),
         ],
       ),
     );

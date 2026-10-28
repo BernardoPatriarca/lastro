@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/widgets/seletor_mes.dart';
 import '../domain/competencia.dart';
 import '../domain/compromissos.dart';
+import '../domain/credito_seguro.dart';
 import '../domain/enums.dart';
 import '../domain/fatura.dart';
 import '../domain/saldo.dart';
@@ -291,4 +292,67 @@ final projecaoComprometidoProvider = Provider<Map<Competencia, int>>((ref) {
     }
   }
   return projetarComprometido(itens, inicio: inicio);
+});
+
+// ---------------------------------------------------------------------------
+// Crédito seguro (CLAUDE.md 5.1)
+// ---------------------------------------------------------------------------
+
+/// "Pode gastar no crédito", recalculado sempre que saldo, faturas,
+/// compromissos ou configurações mudam.
+final creditoSeguroProvider = Provider<ResultadoCreditoSeguro>((ref) {
+  final ajustes = ref.watch(ajustesProvider);
+  final contas = ref.watch(contasAtivasProvider);
+  final saldos = ref.watch(saldosPorContaProvider);
+  final cartoes = ref.watch(cartoesPorIdProvider);
+  final faturas = ref.watch(faturasProvider).ou;
+  final totais = ref.watch(totaisFaturasProvider);
+  final hoje = DateTime.now();
+  final dia = DateTime(hoje.year, hoje.month, hoje.day);
+
+  var saldoContas = 0;
+  for (final c in contas) {
+    if (c.considerarNoCreditoSeguro) saldoContas += saldos[c.id] ?? 0;
+  }
+
+  CicloFatura cicloAtual(Cartao c) => cicloDaCompra(
+        dia,
+        diaFechamento: c.diaFechamento,
+        diaVencimento: c.diaVencimento,
+      );
+
+  final naoPagas = <ComprometimentoFatura>[];
+  for (final f in faturas) {
+    if (f.status == StatusFatura.paga) continue;
+    final total = totais[f.id] ?? 0;
+    final cartao = cartoes[f.cartaoId];
+    if (total <= 0 || cartao == null) continue;
+    naoPagas.add(ComprometimentoFatura(
+      total,
+      futura: faturaEhFutura(Competencia.parse(f.competencia), cicloAtual(cartao)),
+    ));
+  }
+
+  final horizonte = horizonteContasFixas(
+    vencimentosFaturaAtual: [
+      for (final c in cartoes.values)
+        if (c.ativo) cicloAtual(c).dataVencimento,
+    ],
+    hoje: dia,
+  );
+  final compromissos = ref.watch(compromissosPorIdProvider);
+  var fixos = 0;
+  for (final o in ref.watch(ocorrenciasProvider).ou) {
+    if (o.status != StatusOcorrencia.pendente) continue;
+    if (compromissos[o.compromissoId]?.ativo != true) continue;
+    if (!o.dataVencimento.isAfter(horizonte)) fixos += o.valor;
+  }
+
+  return calcularCreditoSeguro(
+    saldoContas: saldoContas,
+    faturasNaoPagas: naoPagas,
+    fixosPendentes: fixos,
+    modo: ajustes.modoParcelados,
+    descontarFixos: ajustes.descontarFixos,
+  );
 });
