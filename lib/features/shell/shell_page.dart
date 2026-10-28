@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'lancamento_rapido_stub.dart';
+import '../../core/router/app_router.dart';
 
 /// Casca com a barra inferior (Início · Lançamentos · Cartões ·
 /// Investimentos · Mais) e o botão flutuante "+" de lançamento rápido.
@@ -21,7 +21,7 @@ class ShellPage extends StatelessWidget {
           ? null
           : FloatingActionButton(
               tooltip: 'Lançamento rápido',
-              onPressed: () => abrirLancamentoRapido(context),
+              onPressed: () => context.push(Rotas.novoLancamento),
               child: const Icon(Icons.add_rounded, size: 28),
             ),
       bottomNavigationBar: NavigationBar(

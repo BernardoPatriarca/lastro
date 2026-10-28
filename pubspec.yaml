@@ -19,6 +19,9 @@ dependencies:
   drift_flutter: ^0.3.1
   path_provider: ^2.1.6
   path: ^1.9.1
+  local_auth: ^3.0.2
+  flutter_secure_storage: ^11.2.0
+  cryptography: ^2.9.0
 
 dev_dependencies:
   flutter_test:

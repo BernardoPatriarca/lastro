@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../core/widgets/estado_vazio.dart';
+import '../../core/router/app_router.dart';
 
+/// Menu "Mais": atalhos para as áreas secundárias do app.
 class MaisPage extends StatelessWidget {
   const MaisPage({super.key});
 
@@ -9,10 +11,56 @@ class MaisPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Mais')),
-      body: const EstadoVazio(
-        icone: Icons.menu_rounded,
-        titulo: 'Em construção',
-        mensagem: 'Compromissos, contas, categorias, importação e configurações ficam aqui.',
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          _Item(
+            icone: Icons.account_balance_wallet_rounded,
+            titulo: 'Contas',
+            subtitulo: 'Saldos, ajuste de saldo e transferências',
+            onTap: () => context.push(Rotas.contas),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Item extends StatelessWidget {
+  const _Item({
+    required this.icone,
+    required this.titulo,
+    required this.subtitulo,
+    required this.onTap,
+  });
+  final IconData icone;
+  final String titulo;
+  final String subtitulo;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          leading: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: tema.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icone, color: tema.colorScheme.onPrimaryContainer),
+          ),
+          title: Text(titulo,
+              style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+          subtitle: Text(subtitulo),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: onTap,
+        ),
       ),
     );
   }

@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/providers.dart';
 import '../formatadores/moeda.dart';
 import '../theme/cores_lastro.dart';
 
 /// Exibe um valor em R$ com algarismos tabulares (colunas alinhadas).
 ///
-/// Com [colorirPorSinal], positivo fica verde (com `+`) e negativo vermelho
-/// (com `-`): o sinal impresso garante que a cor não é a única informação.
-class ValorMonetario extends StatelessWidget {
+/// Respeita a configuração "ocultar valores" (`R$ •••`) sozinho.
+/// Com [colorirPorSinal], positivo fica verde e negativo vermelho; o sinal
+/// impresso garante que a cor não é a única informação.
+class ValorMonetario extends ConsumerWidget {
   const ValorMonetario(
     this.centavos, {
     super.key,
     this.estilo,
     this.colorirPorSinal = false,
     this.mostrarMais = false,
-    this.ocultar = false,
     this.textAlign,
   });
 
@@ -22,7 +24,6 @@ class ValorMonetario extends StatelessWidget {
   final TextStyle? estilo;
   final bool colorirPorSinal;
   final bool mostrarMais;
-  final bool ocultar;
   final TextAlign? textAlign;
 
   /// Estilo com números tabulares, para usar também fora deste widget.
@@ -30,7 +31,8 @@ class ValorMonetario extends StatelessWidget {
       .copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ocultar = ref.watch(ajustesProvider.select((a) => a.ocultarValores));
     var estiloFinal = tabular(estilo ?? Theme.of(context).textTheme.bodyLarge);
     if (colorirPorSinal && !ocultar && centavos != 0) {
       final cores = context.coresLastro;

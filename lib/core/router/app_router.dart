@@ -1,31 +1,128 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../features/contas/conta_form_page.dart';
+import '../../features/contas/contas_page.dart';
+import '../../features/lancamentos/lancamento_form_page.dart';
 
 import '../../features/cartoes/cartoes_page.dart';
 import '../../features/inicio/inicio_page.dart';
 import '../../features/investimentos/investimentos_page.dart';
 import '../../features/lancamentos/lancamentos_page.dart';
+import '../../features/login/auth_controller.dart';
+import '../../features/login/criar_senha_page.dart';
 import '../../features/login/login_page.dart';
 import '../../features/mais/mais_page.dart';
 import '../../features/shell/shell_page.dart';
 
 /// Caminhos das rotas do app.
 abstract final class Rotas {
+  static const carregando = '/carregando';
+  static const criarSenha = '/criar-senha';
   static const login = '/login';
   static const inicio = '/inicio';
   static const lancamentos = '/lancamentos';
   static const cartoes = '/cartoes';
   static const investimentos = '/investimentos';
   static const mais = '/mais';
+
+  // Dentro da aba Mais.
+  static const contas = '/mais/contas';
+
+  // Formulários em tela cheia (por cima da barra inferior).
+  static const novoLancamento = '/lancamento/novo';
+  static String editarLancamento(int id) => '/lancamento/$id';
+  static const novaConta = '/conta/nova';
+  static String editarConta(int id) => '/conta/$id';
 }
 
-/// Monta o roteador. Função separada para os testes criarem um por teste.
-GoRouter criarRouter({String inicial = Rotas.login}) {
+/// Navegador raiz: formulários abrem por cima da barra inferior.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
+/// Transição de "folha subindo" para formulários em tela cheia.
+Page<void> paginaModal(GoRouterState state, Widget child) =>
+    CustomTransitionPage<void>(
+      key: state.pageKey,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 280),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      transitionsBuilder: (_, animacao, _, filho) => SlideTransition(
+        position: Tween(begin: const Offset(0, 0.08), end: Offset.zero)
+            .chain(CurveTween(curve: Curves.easeOutCubic))
+            .animate(animacao),
+        child: FadeTransition(opacity: animacao, child: filho),
+      ),
+    );
+
+/// Monta o roteador. [estado] diz em que ponto da sessão o app está; o
+/// roteador leva sozinho para criar senha, login ou Início.
+GoRouter criarRouter({
+  required EstadoAuth Function() estado,
+  Listenable? atualizarQuando,
+  String? inicial,
+}) {
+  String? redirecionar(BuildContext _, GoRouterState rota) {
+    final local = rota.matchedLocation;
+    final alvo = switch (estado()) {
+      EstadoAuth.carregando => Rotas.carregando,
+      EstadoAuth.semSenha => Rotas.criarSenha,
+      EstadoAuth.bloqueado => Rotas.login,
+      EstadoAuth.liberado => const {
+            Rotas.carregando,
+            Rotas.criarSenha,
+            Rotas.login,
+          }.contains(local)
+          ? Rotas.inicio
+          : local,
+    };
+    return alvo == local ? null : alvo;
+  }
+
   return GoRouter(
-    initialLocation: inicial,
+    navigatorKey: rootNavigatorKey,
+    initialLocation: inicial ?? Rotas.carregando,
+    refreshListenable: atualizarQuando,
+    redirect: redirecionar,
     routes: [
-      // Provisório: na Etapa 2 o login passa a proteger o acesso ao app.
+      GoRoute(
+        path: Rotas.carregando,
+        builder: (_, _) => const Scaffold(body: SizedBox.shrink()),
+      ),
+      GoRoute(path: Rotas.criarSenha, builder: (_, _) => const CriarSenhaPage()),
       GoRoute(path: Rotas.login, builder: (_, _) => const LoginPage()),
+      GoRoute(
+        path: Rotas.novoLancamento,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(
+          state,
+          LancamentoFormPage(
+            tipoInicial: state.uri.queryParameters['tipo'],
+            contaInicial: int.tryParse(state.uri.queryParameters['conta'] ?? ''),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/lancamento/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(
+          state,
+          LancamentoFormPage(id: int.parse(state.pathParameters['id']!)),
+        ),
+      ),
+      GoRoute(
+        path: Rotas.novaConta,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(state, const ContaFormPage()),
+      ),
+      GoRoute(
+        path: '/conta/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(
+          state,
+          ContaFormPage(id: int.parse(state.pathParameters['id']!)),
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) =>
             ShellPage(navigationShell: navigationShell),
@@ -49,7 +146,13 @@ GoRouter criarRouter({String inicial = Rotas.login}) {
             ),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: Rotas.mais, builder: (_, _) => const MaisPage()),
+            GoRoute(
+              path: Rotas.mais,
+              builder: (_, _) => const MaisPage(),
+              routes: [
+                GoRoute(path: 'contas', builder: (_, _) => const ContasPage()),
+              ],
+            ),
           ]),
         ],
       ),
@@ -58,7 +161,15 @@ GoRouter criarRouter({String inicial = Rotas.login}) {
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final router = criarRouter();
-  ref.onDispose(router.dispose);
+  final mudou = ValueNotifier<int>(0);
+  ref.listen(authProvider, (_, _) => mudou.value++);
+  final router = criarRouter(
+    estado: () => ref.read(authProvider),
+    atualizarQuando: mudou,
+  );
+  ref.onDispose(() {
+    router.dispose();
+    mudou.dispose();
+  });
   return router;
 });
