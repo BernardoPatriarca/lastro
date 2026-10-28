@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/dados_ficticios.dart';
+import '../../data/manutencao.dart';
 import '../../data/providers.dart';
 import '../../domain/enums.dart';
 import '../login/auth_controller.dart';
@@ -175,8 +178,76 @@ class ConfiguracoesPage extends ConsumerWidget {
     );
   }
 
-  /// Ponto de extensão: backup e restauração entram aqui (Etapa 10).
-  List<Widget> _extras(BuildContext context, WidgetRef ref) => const [];
+  /// Backup e restauração entram aqui (Etapa 10). Em debug, também as
+  /// ferramentas de dados fictícios.
+  List<Widget> _extras(BuildContext context, WidgetRef ref) => [
+        if (kDebugMode) ...[
+          const _Secao('Desenvolvimento (só em debug)'),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.science_rounded),
+                  title: const Text('Carregar dados fictícios'),
+                  subtitle: const Text(
+                    'Cria contas, cartão e lançamentos de exemplo para testar. '
+                    'Use com o app vazio.',
+                  ),
+                  onTap: () => _carregarDemo(context, ref),
+                ),
+                ListTile(
+                  leading: Icon(Icons.delete_forever_rounded,
+                      color: Theme.of(context).colorScheme.error),
+                  title: const Text('Apagar todos os dados'),
+                  subtitle: const Text('Remove tudo e volta ao estado inicial.'),
+                  onTap: () => _apagarTudo(context, ref),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ];
+
+  Future<void> _carregarDemo(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(bancoProvider);
+    if ((await db.contasDao.obter(1)) != null) {
+      if (context.mounted) {
+        mostrarAviso(context, 'O app já tem dados. Apague tudo antes de carregar os de exemplo.');
+      }
+      return;
+    }
+    await popularDadosFicticios(db);
+    if (context.mounted) mostrarAviso(context, 'Dados fictícios carregados');
+  }
+
+  Future<void> _apagarTudo(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(Icons.warning_amber_rounded, color: Theme.of(ctx).colorScheme.error),
+        title: const Text('Apagar todos os dados?'),
+        content: const Text(
+          'Contas, cartões, lançamentos e compromissos serão removidos. '
+          'Isso não pode ser desfeito. A senha continua a mesma.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(100, 44),
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Apagar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await apagarTodosOsDados(ref.read(bancoProvider));
+    if (context.mounted) mostrarAviso(context, 'Dados apagados');
+  }
 
   Future<void> _alternarBiometria(BuildContext context, WidgetRef ref, bool ligar) async {
     final definir = ref.read(definirAjusteProvider);

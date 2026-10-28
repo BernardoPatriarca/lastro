@@ -6,6 +6,7 @@ import '../domain/compromissos.dart';
 import '../domain/credito_seguro.dart';
 import '../domain/enums.dart';
 import '../domain/fatura.dart';
+import '../domain/resumo_mes.dart';
 import '../domain/saldo.dart';
 import 'banco.dart';
 import 'compromisso_calculo.dart';
@@ -355,4 +356,95 @@ final creditoSeguroProvider = Provider<ResultadoCreditoSeguro>((ref) {
     modo: ajustes.modoParcelados,
     descontarFixos: ajustes.descontarFixos,
   );
+});
+
+// ---------------------------------------------------------------------------
+// Início: gastos por categoria, maiores gastos e contas do mês
+// ---------------------------------------------------------------------------
+
+/// Gastos do mês por categoria (subcategorias somadas na categoria-pai).
+final gastosPorCategoriaProvider = Provider<List<FatiaCategoria>>((ref) {
+  final categorias = ref.watch(categoriasPorIdProvider);
+  return gastosPorCategoria(
+    [
+      for (final l in ref.watch(lancamentosDoMesProvider))
+        if (l.tipo == TipoLancamento.gasto) GastoSimples(l.categoriaId, l.valor),
+    ],
+    categoriaPai: {for (final c in categorias.values) c.id: c.categoriaPaiId},
+  );
+});
+
+/// Os 5 maiores gastos do mês.
+final maioresGastosProvider = Provider<List<Lancamento>>((ref) {
+  final gastos = [
+    for (final l in ref.watch(lancamentosDoMesProvider))
+      if (l.tipo == TipoLancamento.gasto) l,
+  ]..sort((a, b) => b.valor.compareTo(a.valor));
+  return gastos.take(5).toList();
+});
+
+/// Compromissos e faturas que vencem no mês selecionado.
+final contasDoMesProvider = Provider<List<ContaDoMes>>((ref) {
+  final mes = ref.watch(mesSelecionadoProvider);
+  final cartoes = ref.watch(cartoesPorIdProvider);
+  final compromissos = ref.watch(compromissosPorIdProvider);
+  final totais = ref.watch(totaisFaturasProvider);
+  final ocorrencias = ref.watch(ocorrenciasProvider).ou;
+  final itens = <ContaDoMes>[];
+
+  for (final f in ref.watch(faturasProvider).ou) {
+    if (!mes.contem(f.dataVencimento)) continue;
+    final total = totais[f.id] ?? 0;
+    if (total <= 0) continue;
+    itens.add(ContaDoMes(
+      descricao: 'Fatura ${cartoes[f.cartaoId]?.nome ?? 'cartão'}',
+      valor: total,
+      vencimento: f.dataVencimento,
+      paga: f.status == StatusFatura.paga,
+      ehFatura: true,
+      referenciaId: f.id,
+    ));
+  }
+
+  final geradas = <int, Set<Competencia>>{};
+  for (final o in ocorrencias) {
+    geradas
+        .putIfAbsent(o.compromissoId, () => {})
+        .add(Competencia.parse(o.competencia));
+    if (!mes.contem(o.dataVencimento)) continue;
+    final c = compromissos[o.compromissoId];
+    if (c == null) continue;
+    itens.add(ContaDoMes(
+      descricao: o.numeroParcela == null
+          ? c.descricao
+          : '${c.descricao} (${o.numeroParcela}/${c.numeroParcelas})',
+      valor: o.valor,
+      vencimento: o.dataVencimento,
+      paga: o.status == StatusOcorrencia.paga,
+      ehFatura: false,
+      referenciaId: o.id,
+    ));
+  }
+
+  // Meses futuros: contas fixas ainda não geradas, só para enxergar o peso.
+  for (final c in compromissos.values) {
+    if (!c.ativo) continue;
+    final ja = geradas[c.id] ?? const <Competencia>{};
+    for (final o in ocorrenciasDe(c, mes)) {
+      if (o.competencia != mes || ja.contains(o.competencia)) continue;
+      itens.add(ContaDoMes(
+        descricao: o.numeroParcela == null
+            ? c.descricao
+            : '${c.descricao} (${o.numeroParcela}/${c.numeroParcelas})',
+        valor: o.valor,
+        vencimento: o.dataVencimento,
+        paga: false,
+        ehFatura: false,
+        podePagar: false,
+      ));
+    }
+  }
+
+  itens.sort((a, b) => a.vencimento.compareTo(b.vencimento));
+  return itens;
 });

@@ -3,20 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/formatadores/data.dart';
-import '../../core/formatadores/moeda.dart';
 import '../../core/router/app_router.dart';
 import '../../core/widgets/estado_vazio.dart';
 import '../../core/widgets/valor_monetario.dart';
 import '../../data/banco.dart';
 import '../../data/derivados.dart';
 import '../../data/providers.dart';
-import '../../data/servicos/servico_cartao.dart';
-import '../../data/servicos/servicos.dart';
 import '../../domain/competencia.dart';
 import '../../domain/enums.dart';
 import '../../domain/fatura.dart';
 import '../lancamentos/lancamento_acoes.dart';
 import 'cartao_visual.dart';
+import 'pagar_fatura.dart';
 
 /// Detalhe do cartão: fatura atual (e navegação para as futuras/passadas),
 /// lançamentos e parcelas, datas e botão "Pagar fatura".
@@ -125,7 +123,7 @@ class _CartaoDetalhePageState extends ConsumerState<CartaoDetalhePage> {
             fatura: fatura,
             onPagar: fatura == null || status == StatusFatura.paga || total <= 0
                 ? null
-                : () => _pagar(context, cartao, fatura, total),
+                : () => pagarFaturaDialog(context, ref, cartao, fatura, total),
           ),
           if (proximas.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -196,83 +194,6 @@ class _CartaoDetalhePageState extends ConsumerState<CartaoDetalhePage> {
   static String _mesCurto(Competencia c) {
     const nomes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
     return '${nomes[c.mes - 1]}/${c.ano % 100}';
-  }
-
-  Future<void> _pagar(
-    BuildContext context,
-    Cartao cartao,
-    Fatura fatura,
-    int total,
-  ) async {
-    final contas = ref.read(contasAtivasProvider);
-    if (contas.isEmpty) {
-      mostrarAviso(context, 'Cadastre uma conta para pagar a fatura.');
-      return;
-    }
-    final saldos = ref.read(saldosPorContaProvider);
-    var contaId = contas.any((c) => c.id == cartao.contaPagamentoId)
-        ? cartao.contaPagamentoId!
-        : contas.first.id;
-
-    final escolhida = await showDialog<int>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) {
-          final saldo = saldos[contaId] ?? 0;
-          final insuficiente = saldo < total;
-          return AlertDialog(
-            title: const Text('Pagar fatura'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${cartao.nome} · ${Moeda.formatar(total)}',
-                    style: Theme.of(ctx).textTheme.titleMedium),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<int>(
-                  initialValue: contaId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Pagar com a conta'),
-                  items: [
-                    for (final c in contas)
-                      DropdownMenuItem(value: c.id, child: Text(c.nome)),
-                  ],
-                  onChanged: (v) => setSt(() => contaId = v!),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Saldo da conta: ${Moeda.formatar(saldo)}',
-                  style: Theme.of(ctx).textTheme.bodySmall,
-                ),
-                if (insuficiente)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Saldo insuficiente: a conta ficará negativa.',
-                      style: TextStyle(color: Theme.of(ctx).colorScheme.error),
-                    ),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-              FilledButton(
-                style: FilledButton.styleFrom(minimumSize: const Size(100, 44)),
-                onPressed: () => Navigator.pop(ctx, contaId),
-                child: const Text('Pagar'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-    if (escolhida == null) return;
-    try {
-      await ref.read(servicoCartaoProvider).pagarFatura(fatura: fatura, contaId: escolhida);
-      if (context.mounted) mostrarAviso(context, 'Fatura paga');
-    } on OperacaoInvalida catch (e) {
-      if (context.mounted) mostrarAviso(context, e.mensagem);
-    }
   }
 }
 
