@@ -26,6 +26,8 @@ class _ShellPageState extends ConsumerState<ShellPage> {
     super.initState();
     // Manutenção ao abrir o app: faturas cuja data de fechamento passou.
     ref.read(servicoCartaoProvider).fecharVencidas();
+    // E gera as contas fixas até o mês que vem (CLAUDE.md 5.5).
+    ref.read(servicoCompromissoProvider).gerarOcorrencias();
   }
 
   @override

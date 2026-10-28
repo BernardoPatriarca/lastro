@@ -64,6 +64,12 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
   int? _cartaoId;
   int _parcelas = 1;
 
+  // "Gasto fixo" (cria compromisso) e "Repetir todo mês" (cria receita).
+  bool _fixo = false;
+  TipoCompromisso _tipoFixo = TipoCompromisso.recorrente;
+  int _parcelasFixo = 12;
+  bool _repetir = false;
+
   /// Compra parcelada em edição: parcela N de M.
   CompraParcelada? _compra;
   DateTime _data = soData(DateTime.now());
@@ -231,6 +237,25 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                   _tipo == TipoLancamento.transferencia ? _contaDestinoId : null,
                 ),
               ));
+      } else if (_fixo && _aba == _Aba.gasto && !_credito) {
+        final categorias = ref.read(categoriasPorIdProvider);
+        final texto = _descricao.text.trim();
+        await ref.read(servicoCompromissoProvider).criarCompromisso(
+              descricao: texto.isNotEmpty
+                  ? texto
+                  : (categorias[_categoriaId]?.nome ?? 'Gasto fixo'),
+              valor: _valor.centavos,
+              tipo: _tipoFixo,
+              dataInicio: _data,
+              numeroParcelas: _parcelasFixo,
+              forma: _forma,
+              categoriaId: _categoriaId,
+              contaId: contaId,
+            );
+        if (!mounted) return;
+        context.pop();
+        mostrarAviso(context, 'Gasto fixo criado: aparece em Pendentes para você pagar.');
+        return;
       } else if (_credito) {
         await cartaoServico.registrarCompra(
           cartao: cartao!,
@@ -252,6 +277,21 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
           contaDestinoId:
               _tipo == TipoLancamento.transferencia ? _contaDestinoId : null,
         );
+        // "Repetir todo mês": o ganho de agora é real; a receita recorrente
+        // começa no mês seguinte para não aparecer em dobro em Pendentes.
+        if (_repetir && _aba == _Aba.ganho) {
+          final texto = _descricao.text.trim();
+          await ref.read(servicoCompromissoProvider).criarReceita(
+                descricao: texto.isNotEmpty
+                    ? texto
+                    : (ref.read(categoriasPorIdProvider)[_categoriaId]?.nome ?? 'Receita'),
+                valorPrevisto: _valor.centavos,
+                contaId: contaId!,
+                dataInicio: somarMeses(_data, 1),
+                diaPrevisto: _data.day,
+                categoriaId: _categoriaId,
+              );
+        }
       }
       if (!mounted) return;
       context.pop();
@@ -580,8 +620,79 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
           ),
         ),
       ],
+      if (!_edicao && _aba == _Aba.gasto && !_credito) ..._camposFixo(),
+      if (!_edicao && _aba == _Aba.ganho)
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _repetir,
+          onChanged: (v) => setState(() => _repetir = v),
+          title: const Text('Repetir todo mês'),
+          subtitle: const Text(
+            'Cria uma receita recorrente: todo mês ela aparece em Pendentes '
+            'para você confirmar.',
+          ),
+        ),
     ];
   }
+
+  /// "Gasto fixo": em vez de lançar agora, cria um compromisso (recorrente ou
+  /// parcelado) que gera uma conta pendente por mês.
+  List<Widget> _camposFixo() => [
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _fixo,
+          onChanged: (v) => setState(() => _fixo = v),
+          title: const Text('Gasto fixo'),
+          subtitle: const Text(
+            'Aluguel, internet, financiamento… aparece em Pendentes todo mês.',
+          ),
+        ),
+        if (_fixo) ...[
+          const SizedBox(height: 4),
+          SegmentedButton<TipoCompromisso>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: TipoCompromisso.recorrente, label: Text('Sem fim')),
+              ButtonSegment(value: TipoCompromisso.parcelado, label: Text('Parcelado')),
+            ],
+            selected: {_tipoFixo},
+            onSelectionChanged: (s) => setState(() => _tipoFixo = s.first),
+          ),
+          if (_tipoFixo == TipoCompromisso.parcelado) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Expanded(child: Text('Número de parcelas')),
+                IconButton.filledTonal(
+                  onPressed: _parcelasFixo > 2 ? () => setState(() => _parcelasFixo--) : null,
+                  icon: const Icon(Icons.remove_rounded),
+                ),
+                SizedBox(
+                  width: 48,
+                  child: Text('$_parcelasFixo',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium),
+                ),
+                IconButton.filledTonal(
+                  onPressed: _parcelasFixo < 120 ? () => setState(() => _parcelasFixo++) : null,
+                  icon: const Icon(Icons.add_rounded),
+                ),
+              ],
+            ),
+          ],
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'O valor acima é o de cada mês. A data escolhida será o primeiro '
+              'vencimento (todo dia ${_data.day}).',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        ],
+      ];
 }
 
 class _SeletorConta extends StatelessWidget {

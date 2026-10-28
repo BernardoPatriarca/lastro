@@ -4,6 +4,7 @@ import '../../domain/datas.dart';
 import '../../domain/enums.dart';
 import '../banco.dart';
 import 'servico_cartao.dart';
+import 'servico_compromisso.dart';
 
 /// Escritas de lançamentos que não envolvem cartão (ver `ServicoCartao`).
 class ServicoLancamentos {
@@ -57,6 +58,10 @@ class ServicoLancamentos {
     } else if (l.formaPagamento == FormaPagamento.credito) {
       await cartao.excluirCompra(l, EscopoParcelas.soEsta);
     } else {
+      // Se o lançamento pagava uma conta fixa, ela volta a ficar pendente.
+      if (l.ocorrenciaCompromissoId != null) {
+        await ServicoCompromisso(_db).reabrirOcorrenciaDoLancamento(id);
+      }
       await _db.lancamentosDao.excluir(id);
     }
   }

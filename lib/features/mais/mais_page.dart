@@ -20,6 +20,12 @@ class MaisPage extends StatelessWidget {
             subtitulo: 'Saldos, ajuste de saldo e transferências',
             onTap: () => context.push(Rotas.contas),
           ),
+          _Item(
+            icone: Icons.event_repeat_rounded,
+            titulo: 'Compromissos',
+            subtitulo: 'Gastos fixos, parcelados e receitas recorrentes',
+            onTap: () => context.push(Rotas.compromissos),
+          ),
         ],
       ),
     );

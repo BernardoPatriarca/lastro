@@ -2,10 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/widgets/seletor_mes.dart';
 import '../domain/competencia.dart';
+import '../domain/compromissos.dart';
 import '../domain/enums.dart';
 import '../domain/fatura.dart';
 import '../domain/saldo.dart';
 import 'banco.dart';
+import 'compromisso_calculo.dart';
 import 'providers.dart';
 
 /// Converte um [Lancamento] na visão usada pelo cálculo de saldo.
@@ -205,4 +207,88 @@ final resumosCartaoProvider = Provider<List<ResumoCartao>>((ref) {
         );
       }(),
   ];
+});
+
+// ---------------------------------------------------------------------------
+// Compromissos, receitas e pendentes
+// ---------------------------------------------------------------------------
+
+final compromissosPorIdProvider = Provider<Map<int, Compromisso>>(
+  (ref) => {for (final c in ref.watch(compromissosProvider).ou) c.id: c},
+);
+
+/// Ocorrências de compromissos pendentes com vencimento até o fim do mês
+/// atual (inclui as atrasadas), da mais antiga para a mais nova.
+final ocorrenciasPendentesProvider = Provider<List<OcorrenciaCompromisso>>((ref) {
+  final fim = Competencia.deData(DateTime.now()).ultimoDia;
+  final lista = [
+    for (final o in ref.watch(ocorrenciasProvider).ou)
+      if (o.status == StatusOcorrencia.pendente && !o.dataVencimento.isAfter(fim)) o,
+  ]..sort((a, b) => a.dataVencimento.compareTo(b.dataVencimento));
+  return lista;
+});
+
+/// Receitas recorrentes previstas e ainda não confirmadas no mês atual.
+final receitasPendentesProvider = Provider<List<ReceitaRecorrente>>((ref) {
+  final mes = Competencia.deData(DateTime.now());
+  final receitas = ref.watch(receitasProvider).ou;
+  final confirmadas = <int>{
+    for (final l in ref.watch(lancamentosProvider).ou)
+      if (l.receitaRecorrenteId != null && mes.contem(l.data)) l.receitaRecorrenteId!,
+  };
+  final pendentes = receitasPendentesDoMes(
+    receitas: [
+      for (final r in receitas)
+        ReceitaBase(
+          id: r.id,
+          dataInicio: r.dataInicio,
+          ativa: r.ativa,
+          diaPrevisto: r.diaPrevisto,
+        ),
+    ],
+    confirmadasNoMes: confirmadas,
+    mes: mes,
+  ).map((r) => r.id).toSet();
+  return [for (final r in receitas) if (pendentes.contains(r.id)) r];
+});
+
+/// Total comprometido por mês nos próximos 12 meses: faturas de cartão ainda
+/// não pagas (no mês do vencimento) + compromissos (pendentes já gravados e
+/// ocorrências futuras apenas calculadas, sem gravar).
+final projecaoComprometidoProvider = Provider<Map<Competencia, int>>((ref) {
+  final inicio = Competencia.deData(DateTime.now());
+  final fim = inicio.somarMeses(11);
+  final itens = <ItemComprometido>[];
+
+  final totais = ref.watch(totaisFaturasProvider);
+  for (final f in ref.watch(faturasProvider).ou) {
+    if (f.status == StatusFatura.paga) continue;
+    final total = totais[f.id] ?? 0;
+    if (total > 0) itens.add(ItemComprometido(f.dataVencimento, total, origem: 'cartao'));
+  }
+
+  final ocorrencias = ref.watch(ocorrenciasProvider).ou;
+  for (final o in ocorrencias) {
+    if (o.status == StatusOcorrencia.pendente) {
+      itens.add(ItemComprometido(o.dataVencimento, o.valor, origem: 'compromisso'));
+    }
+  }
+  for (final c in ref.watch(compromissosProvider).ou) {
+    if (!c.ativo) continue;
+    final gravadas = {
+      for (final o in ocorrencias)
+        if (o.compromissoId == c.id) Competencia.parse(o.competencia),
+    };
+    final previstas = ocorrenciasFaltantes(
+      ocorrenciasDe(c, fim),
+      gravadas,
+    );
+    for (final o in previstas) {
+      // Antes do mês atual = já resolvido fora do app.
+      if (o.competencia >= inicio) {
+        itens.add(ItemComprometido(o.dataVencimento, o.valor, origem: 'compromisso'));
+      }
+    }
+  }
+  return projetarComprometido(itens, inicio: inicio);
 });
