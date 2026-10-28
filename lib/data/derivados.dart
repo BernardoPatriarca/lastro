@@ -1,11 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/widgets/seletor_mes.dart';
+import '../domain/alertas.dart';
 import '../domain/competencia.dart';
 import '../domain/compromissos.dart';
 import '../domain/credito_seguro.dart';
 import '../domain/enums.dart';
 import '../domain/fatura.dart';
+import '../domain/investimentos.dart';
+import '../domain/orcamento.dart';
 import '../domain/resumo_mes.dart';
 import '../domain/saldo.dart';
 import 'banco.dart';
@@ -447,4 +450,235 @@ final contasDoMesProvider = Provider<List<ContaDoMes>>((ref) {
 
   itens.sort((a, b) => a.vencimento.compareTo(b.vencimento));
   return itens;
+});
+
+// ---------------------------------------------------------------------------
+// Investimentos e metas (V2)
+// ---------------------------------------------------------------------------
+
+final movimentosInvProvider = Provider<List<MovimentoInv>>((ref) => [
+      for (final m in ref.watch(movimentosInvestimentoProvider).ou)
+        MovimentoInv(
+          id: m.id,
+          investimentoId: m.investimentoId,
+          tipo: m.tipo,
+          valor: m.valor,
+          data: m.data,
+        ),
+    ]);
+
+/// Saldo atual de cada investimento (id → centavos).
+final saldosInvestimentosProvider = Provider<Map<int, int>>(
+  (ref) => saldosPorInvestimento(ref.watch(movimentosInvProvider)),
+);
+
+/// Patrimônio total em investimentos ativos.
+final patrimonioProvider = Provider<int>((ref) {
+  final saldos = ref.watch(saldosInvestimentosProvider);
+  var total = 0;
+  for (final i in ref.watch(investimentosProvider).ou) {
+    if (i.ativo) total += saldos[i.id] ?? 0;
+  }
+  return total;
+});
+
+/// Evolução do patrimônio nos últimos 12 meses.
+final patrimonioMensalProvider = Provider<Map<Competencia, int>>((ref) {
+  final ativos = {
+    for (final i in ref.watch(investimentosProvider).ou)
+      if (i.ativo) i.id,
+  };
+  return patrimonioMensal(
+    [for (final m in ref.watch(movimentosInvProvider)) if (ativos.contains(m.investimentoId)) m],
+    fim: Competencia.deData(DateTime.now()),
+  );
+});
+
+/// Andamento de cada meta ativa (id → progresso). Meta ligada a um
+/// investimento usa o saldo dele; meta sem vínculo usa o patrimônio total.
+final progressoMetasProvider = Provider<Map<int, ProgressoMeta>>((ref) {
+  final saldos = ref.watch(saldosInvestimentosProvider);
+  final patrimonio = ref.watch(patrimonioProvider);
+  final movs = ref.watch(movimentosInvProvider);
+  final hoje = DateTime.now();
+  return {
+    for (final m in ref.watch(metasProvider).ou)
+      if (m.ativa)
+        m.id: calcularProgressoMeta(
+          atual: m.investimentoId == null ? patrimonio : (saldos[m.investimentoId] ?? 0),
+          alvo: m.valorAlvo,
+          prazo: m.prazo,
+          hoje: hoje,
+          ritmoMensalAtual: ritmoMensal(
+            m.investimentoId == null
+                ? movs
+                : [for (final x in movs) if (x.investimentoId == m.investimentoId) x],
+            hoje: hoje,
+          ),
+        ),
+  };
+});
+
+// ---------------------------------------------------------------------------
+// Orçamento por categoria (V2)
+// ---------------------------------------------------------------------------
+
+/// Limites do mês selecionado (categoria → centavos).
+final limitesDoMesProvider = Provider<Map<int, int>>((ref) {
+  final mes = ref.watch(mesSelecionadoProvider).chave;
+  return {
+    for (final o in ref.watch(orcamentosProvider).ou)
+      if (o.competencia == mes) o.categoriaId: o.limite,
+  };
+});
+
+/// Gasto do mês por categoria, contando as subcategorias também no pai.
+final gastosAcumuladosDoMesProvider = Provider<Map<int, int>>((ref) {
+  final categorias = ref.watch(categoriasPorIdProvider);
+  return gastosAcumulados(
+    [
+      for (final l in ref.watch(lancamentosDoMesProvider))
+        if (l.tipo == TipoLancamento.gasto) GastoSimples(l.categoriaId, l.valor),
+    ],
+    categoriaPai: {for (final c in categorias.values) c.id: c.categoriaPaiId},
+  );
+});
+
+/// Linhas da tela de orçamento (categorias de gasto ativas).
+final linhasOrcamentoProvider = Provider<List<LinhaOrcamento>>((ref) {
+  final ativas = [
+    for (final c in ref.watch(categoriasProvider).ou)
+      if (c.ativa && c.tipo == TipoCategoria.gasto) c.id,
+  ];
+  return montarOrcamento(
+    categorias: ativas,
+    limites: ref.watch(limitesDoMesProvider),
+    gastos: ref.watch(gastosAcumuladosDoMesProvider),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Dashboard V2: projeção, top categorias, metas e alertas
+// ---------------------------------------------------------------------------
+
+/// Projeção do gasto do mês no ritmo atual (só vale para o mês corrente).
+class ProjecaoMes {
+  const ProjecaoMes({required this.projetado, required this.gastoAteAgora, required this.ganhos});
+  final int projetado;
+  final int gastoAteAgora;
+  final int ganhos;
+
+  /// Projeção passa dos ganhos do mês.
+  bool get passaDosGanhos => ganhos > 0 && projetado > ganhos;
+}
+
+final projecaoDoMesProvider = Provider<ProjecaoMes?>((ref) {
+  final hoje = DateTime.now();
+  final mes = ref.watch(mesSelecionadoProvider);
+  if (mes != Competencia.deData(hoje)) return null;
+  final dia = DateTime(hoje.year, hoje.month, hoje.day);
+  var gasto = 0;
+  for (final l in ref.watch(lancamentosDoMesProvider)) {
+    if (l.tipo == TipoLancamento.gasto && !l.data.isAfter(dia)) gasto += l.valor;
+  }
+  return ProjecaoMes(
+    projetado: projetarGastoDoMes(
+      gastoAteAgora: gasto,
+      diaAtual: hoje.day,
+      diasNoMes: mes.ultimoDia.day,
+    ),
+    gastoAteAgora: gasto,
+    ganhos: ref.watch(totaisDoMesProvider).ganhos,
+  );
+});
+
+/// Categoria entre as que mais gastaram, com o limite (se houver).
+class TopCategoria {
+  const TopCategoria({required this.categoriaId, required this.gasto, this.limite});
+  final int categoriaId;
+  final int gasto;
+  final int? limite;
+}
+
+/// As 5 categorias que mais gastaram no mês (subcategorias no pai), com a
+/// barra de orçamento quando há limite.
+final topCategoriasProvider = Provider<List<TopCategoria>>((ref) {
+  final limites = ref.watch(limitesDoMesProvider);
+  return [
+    for (final f in ref.watch(gastosPorCategoriaProvider))
+      if (f.categoriaId != null)
+        TopCategoria(categoriaId: f.categoriaId!, gasto: f.valor, limite: limites[f.categoriaId]),
+  ].take(5).toList();
+});
+
+/// Alertas do momento (crédito, vencimentos, orçamento do mês atual, metas
+/// atrasadas e backup).
+final alertasProvider = Provider<List<Alerta>>((ref) {
+  final hoje = DateTime.now();
+  final categorias = ref.watch(categoriasPorIdProvider);
+  final cartoes = ref.watch(cartoesPorIdProvider);
+  final compromissos = ref.watch(compromissosPorIdProvider);
+  final totais = ref.watch(totaisFaturasProvider);
+  final ajustes = ref.watch(ajustesProvider);
+
+  final vencimentos = <VencimentoAlerta>[];
+  for (final f in ref.watch(faturasProvider).ou) {
+    final total = totais[f.id] ?? 0;
+    if (f.status == StatusFatura.paga || total <= 0) continue;
+    vencimentos.add(VencimentoAlerta(
+      descricao: 'Fatura ${cartoes[f.cartaoId]?.nome ?? 'do cartão'}',
+      vencimento: f.dataVencimento,
+      valor: total,
+      ehFatura: true,
+    ));
+  }
+  for (final o in ref.watch(ocorrenciasProvider).ou) {
+    final c = compromissos[o.compromissoId];
+    if (o.status != StatusOcorrencia.pendente || c == null || !c.ativo) continue;
+    vencimentos.add(VencimentoAlerta(
+      descricao: c.descricao,
+      vencimento: o.dataVencimento,
+      valor: o.valor,
+    ));
+  }
+
+  // Orçamento do mês ATUAL (independe do mês que está na tela).
+  final mesAtual = Competencia.deData(hoje);
+  final paiDe = {for (final c in categorias.values) c.id: c.categoriaPaiId};
+  final gastos = gastosAcumulados(
+    [
+      for (final l in ref.watch(lancamentosProvider).ou)
+        if (l.tipo == TipoLancamento.gasto && mesAtual.contem(l.data))
+          GastoSimples(l.categoriaId, l.valor),
+    ],
+    categoriaPai: paiDe,
+  );
+  final emAlerta = <OrcamentoEmAlerta>[];
+  for (final o in ref.watch(orcamentosProvider).ou) {
+    if (o.competencia != mesAtual.chave) continue;
+    final nivel = nivelOrcamento(gastos[o.categoriaId] ?? 0, o.limite);
+    if (nivel == NivelOrcamento.verde) continue;
+    emAlerta.add(OrcamentoEmAlerta(
+      nome: categorias[o.categoriaId]?.nome ?? 'categoria',
+      estourou: nivel == NivelOrcamento.vermelho,
+    ));
+  }
+
+  final progresso = ref.watch(progressoMetasProvider);
+  final metasAtrasadas = [
+    for (final m in ref.watch(metasProvider).ou)
+      if (m.ativa && progresso[m.id]?.situacao == SituacaoMeta.atrasada) m.nome,
+  ];
+
+  final ultimo = ajustes.ultimoBackup;
+  final backupAtrasado = ultimo == null || hoje.difference(ultimo).inDays >= 30;
+
+  return gerarAlertas(
+    hoje: hoje,
+    creditoPodeGastar: ref.watch(creditoSeguroProvider).podeGastar,
+    vencimentos: vencimentos,
+    orcamentos: emAlerta,
+    metasAtrasadas: metasAtrasadas,
+    backupAtrasado: backupAtrasado,
+  );
 });

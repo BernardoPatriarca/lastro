@@ -27,6 +27,12 @@ class MaisPage extends StatelessWidget {
             onTap: () => context.push(Rotas.compromissos),
           ),
           _Item(
+            icone: Icons.pie_chart_rounded,
+            titulo: 'Orçamento',
+            subtitulo: 'Limite mensal por categoria, com alertas de estouro',
+            onTap: () => context.push(Rotas.orcamento),
+          ),
+          _Item(
             icone: Icons.upload_file_rounded,
             titulo: 'Importar extrato',
             subtitulo: 'OFX ou CSV do banco, com revisão antes de lançar',

@@ -19,6 +19,8 @@ class InvestimentosDao extends DatabaseAccessor<AppDatabase>
       into(investimentos).insert(i);
   Future<bool> atualizarInvestimento(Investimento i) =>
       update(investimentos).replace(i);
+  Future<Investimento?> investimento(int id) =>
+      (select(investimentos)..where((i) => i.id.equals(id))).getSingleOrNull();
 
   // ---- movimentos ----
   Stream<List<MovimentoInvestimento>> watchMovimentos() =>
@@ -29,6 +31,20 @@ class InvestimentosDao extends DatabaseAccessor<AppDatabase>
       into(movimentosInvestimento).insert(m);
   Future<int> excluirMovimento(int id) =>
       (delete(movimentosInvestimento)..where((m) => m.id.equals(id))).go();
+  Future<MovimentoInvestimento?> movimento(int id) =>
+      (select(movimentosInvestimento)..where((m) => m.id.equals(id))).getSingleOrNull();
+  Future<MovimentoInvestimento?> movimentoDoLancamento(int lancamentoId) =>
+      (select(movimentosInvestimento)..where((m) => m.lancamentoId.equals(lancamentoId)))
+          .getSingleOrNull();
+  Future<int> excluirMovimentoDoLancamento(int lancamentoId) =>
+      (delete(movimentosInvestimento)..where((m) => m.lancamentoId.equals(lancamentoId))).go();
+  Future<bool> atualizarMovimento(MovimentoInvestimento m) =>
+      update(movimentosInvestimento).replace(m);
+  Future<int> excluirMetasDe(int investimentoId) async {
+    // Metas vinculadas perdem o vínculo (viram metas "gerais").
+    return (update(metas)..where((m) => m.investimentoId.equals(investimentoId)))
+        .write(const MetasCompanion(investimentoId: Value(null)));
+  }
 
   // ---- metas ----
   Stream<List<Meta>> watchMetas() =>
@@ -40,6 +56,8 @@ class InvestimentosDao extends DatabaseAccessor<AppDatabase>
 
   // ---- orçamentos ----
   Stream<List<Orcamento>> watchOrcamentos() => select(orcamentos).watch();
+  Future<List<Orcamento>> orcamentosDe(String competencia) =>
+      (select(orcamentos)..where((o) => o.competencia.equals(competencia))).get();
   Future<void> definirOrcamento(int categoriaId, String competencia, int limite) =>
       into(orcamentos).insertOnConflictUpdate(
         OrcamentosCompanion.insert(

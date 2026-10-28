@@ -6,13 +6,15 @@ import '../../core/router/app_router.dart';
 import '../../core/widgets/seletor_mes.dart';
 import '../../data/providers.dart';
 import 'card_credito_seguro.dart';
+import 'cards_v2.dart';
 import 'contas_do_mes_card.dart';
 import 'grade_totais.dart';
 import 'maiores_gastos_card.dart';
 import 'pizza_gastos_card.dart';
 
-/// Dashboard: crédito seguro em destaque, totais do mês, contas do mês,
-/// gastos por categoria e maiores gastos.
+/// Dashboard: crédito seguro em destaque, alertas, totais do mês, projeção,
+/// contas do mês, gastos por categoria, top categorias com orçamento,
+/// maiores gastos e metas.
 class InicioPage extends ConsumerWidget {
   const InicioPage({super.key});
 
@@ -38,18 +40,22 @@ class InicioPage extends ConsumerWidget {
         children: [
           const SeletorMes(),
           const CardCreditoSeguro(),
+          const AlertasCard(),
           espaco,
           CardSaldoContas(onTap: () => context.push(Rotas.contas)),
           espaco,
           const GradeTotais(),
           espaco,
           const CardTaxaPoupanca(),
+          const ProjecaoCard(),
           espaco,
           const ContasDoMesCard(),
           espaco,
           const PizzaGastosCard(),
+          const TopCategoriasCard(),
           espaco,
           const MaioresGastosCard(),
+          const MetasCard(),
         ],
       ),
     );

@@ -63,6 +63,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
   int? _contaId;
   int? _contaDestinoId;
   int? _cartaoId;
+  int? _investimentoId;
   int _parcelas = 1;
 
   // "Gasto fixo" (cria compromisso) e "Repetir todo mês" (cria receita).
@@ -126,6 +127,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
       _contaDestinoId = l.contaDestinoId;
       _data = l.data;
       _cartaoId = l.cartaoId;
+      _investimentoId = l.investimentoId;
       if (l.formaPagamento != null) _forma = l.formaPagamento!;
       switch (l.tipo) {
         case TipoLancamento.ganho:
@@ -274,6 +276,26 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
           descricao: _descricao.text,
           categoriaId: _categoriaId,
         );
+      } else if (_tipo == TipoLancamento.aporte || _tipo == TipoLancamento.resgate) {
+        // Aporte/resgate: com investimento escolhido, também vira movimento dele.
+        final inv = ref.read(servicoInvestimentoProvider);
+        if (_tipo == TipoLancamento.aporte) {
+          await inv.aportar(
+            contaId: contaId!,
+            valor: _valor.centavos,
+            data: _data,
+            investimentoId: _investimentoId,
+            descricao: _descricao.text,
+          );
+        } else {
+          await inv.resgatar(
+            contaId: contaId!,
+            valor: _valor.centavos,
+            data: _data,
+            investimentoId: _investimentoId,
+            descricao: _descricao.text,
+          );
+        }
       } else {
         await servico.registrar(
           tipo: _tipo,
@@ -693,6 +715,9 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
           ),
         ),
       ],
+      if (!_edicao &&
+          (_tipo == TipoLancamento.aporte || _tipo == TipoLancamento.resgate))
+        ..._campoInvestimento(),
       if (!_edicao && _aba == _Aba.gasto && !_credito) ..._camposFixo(),
       if (!_edicao && _aba == _Aba.ganho)
         SwitchListTile(
@@ -705,6 +730,31 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
             'para você confirmar.',
           ),
         ),
+    ];
+  }
+
+  /// Aporte/resgate: investimento ao qual o movimento pertence (opcional).
+  List<Widget> _campoInvestimento() {
+    final investimentos = [for (final i in ref.watch(investimentosProvider).ou) if (i.ativo) i];
+    if (investimentos.isEmpty) return const [];
+    final valido = investimentos.any((i) => i.id == _investimentoId) ? _investimentoId : null;
+    return [
+      const SizedBox(height: 20),
+      _Secao(
+        'Investimento',
+        child: DropdownButtonFormField<int?>(
+          key: ValueKey('${investimentos.length}-$valido'),
+          initialValue: valido,
+          isExpanded: true,
+          decoration: const InputDecoration(prefixIcon: Icon(Icons.savings_outlined)),
+          items: [
+            const DropdownMenuItem<int?>(value: null, child: Text('Não vincular')),
+            for (final i in investimentos)
+              DropdownMenuItem<int?>(value: i.id, child: Text(i.nome)),
+          ],
+          onChanged: (v) => setState(() => _investimentoId = v),
+        ),
+      ),
     ];
   }
 

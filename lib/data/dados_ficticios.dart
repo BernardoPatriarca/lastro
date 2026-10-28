@@ -6,6 +6,8 @@ import '../domain/enums.dart';
 import 'banco.dart';
 import 'servicos/servico_cartao.dart';
 import 'servicos/servico_compromisso.dart';
+import 'servicos/servico_investimento.dart';
+import 'servicos/servico_orcamento.dart';
 import 'servicos/servico_lancamentos.dart';
 
 /// Dados **fictícios** para testar o app visualmente (só acionável em debug).
@@ -193,6 +195,40 @@ Future<void> popularDadosFicticios(AppDatabase db, {DateTime? hoje}) async {
       await compServ.pagarOcorrencia(o, data: o.dataVencimento);
     }
   }
+
+  // Investimentos, metas e orçamento do mês.
+  final inv = ServicoInvestimento(db);
+  final reserva = await inv.criar(nome: 'Reserva de emergência', tipo: TipoInvestimento.reserva);
+  final cdb = await inv.criar(nome: 'CDB Banco Demo', tipo: TipoInvestimento.cdb);
+  for (var m = 3; m >= 0; m--) {
+    final base = Competencia.deData(agora).somarMeses(-m);
+    final data = DateTime(base.ano, base.mes, 8);
+    if (data.isAfter(agora)) continue;
+    await inv.aportar(
+      contaId: corrente,
+      valor: 50000,
+      data: data,
+      investimentoId: m.isEven ? reserva : cdb,
+      descricao: 'Aporte mensal',
+    );
+  }
+  await inv.atualizarSaldo(investimentoId: reserva, saldo: 108000, data: agora);
+  await inv.criarMeta(
+    nome: 'Reserva de 6 meses',
+    valorAlvo: 1500000,
+    prazo: DateTime(agora.year + 1, agora.month, 28),
+    investimentoId: reserva,
+  );
+  await inv.criarMeta(
+    nome: 'Viagem de fim de ano',
+    valorAlvo: 600000,
+    prazo: DateTime(agora.year, 12, 15),
+  );
+  final orc = ServicoOrcamento(db);
+  final mesAtual = Competencia.deData(agora);
+  await orc.definirLimite(cat('Alimentação')!, mesAtual, 80000);
+  await orc.definirLimite(cat('Transporte/Carro')!, mesAtual, 30000);
+  await orc.definirLimite(cat('Lazer')!, mesAtual, 20000);
 
   await compServ.criarReceita(
     descricao: 'Salário',

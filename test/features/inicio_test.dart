@@ -32,7 +32,10 @@ void main() {
 
     final rolagem = find.byType(Scrollable).first;
     expect(find.text('Pode gastar no crédito'), findsOneWidget);
+    // alertas (nunca fez backup) e projeção do mês corrente
+    expect(find.text('Alertas'), findsOneWidget);
     for (final titulo in [
+      'Projeção do mês',
       'Saldo nas contas',
       'Ganhos',
       'Gastos',
@@ -40,7 +43,9 @@ void main() {
       'Taxa de poupança',
       'Contas do mês',
       'Gastos por categoria',
+      'Top categorias do mês',
       'Maiores gastos do mês',
+      'Metas',
     ]) {
       await tester.scrollUntilVisible(find.text(titulo), 200, scrollable: rolagem);
       expect(find.text(titulo), findsWidgets);

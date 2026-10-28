@@ -14,6 +14,10 @@ import '../../features/configuracoes/configuracoes_page.dart';
 import '../../features/contas/conta_form_page.dart';
 import '../../features/contas/contas_page.dart';
 import '../../features/importacao/importar_page.dart';
+import '../../features/orcamento/orcamento_page.dart';
+import '../../features/investimentos/investimento_detalhe_page.dart';
+import '../../features/investimentos/investimento_form_page.dart';
+import '../../features/investimentos/meta_form_page.dart';
 import '../../features/importacao/mapear_csv_page.dart';
 import '../../features/importacao/revisao_page.dart';
 import '../../features/lancamentos/lancamento_form_page.dart';
@@ -45,6 +49,7 @@ abstract final class Rotas {
   static const configuracoes = '/mais/configuracoes';
   static const categorias = '/mais/categorias';
   static const regras = '/mais/categorias/regras';
+  static const orcamento = '/mais/orcamento';
   static const importar = '/mais/importar';
   static const importarMapear = '/mais/importar/mapear';
   static const importarRevisar = '/mais/importar/revisar';
@@ -59,10 +64,25 @@ abstract final class Rotas {
   static String editarCompromisso(int id) => '/compromisso/$id';
   static const novaReceita = '/receita/nova';
   static String editarReceita(int id) => '/receita/$id';
+  static String investimento(int id) => '/investimentos/$id';
+  static const novoInvestimento = '/investimento/novo';
+  static String editarInvestimento(int id) => '/investimento/$id/editar';
+  static const novaMeta = '/meta/nova';
+  static String editarMeta(int id) => '/meta/$id';
   static const novaCategoria = '/categoria/nova';
   static String editarCategoria(int id) => '/categoria/$id';
   static const novaConta = '/conta/nova';
   static String editarConta(int id) => '/conta/$id';
+}
+
+/// Esconde o aviso (SnackBar) ao abrir uma tela nova: ele ficaria por cima do
+/// botão principal dos formulários.
+class _EscondeAvisos extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    final contexto = navigator?.context;
+    if (contexto != null) ScaffoldMessenger.maybeOf(contexto)?.hideCurrentSnackBar();
+  }
 }
 
 /// Navegador raiz: formulários abrem por cima da barra inferior.
@@ -109,6 +129,7 @@ GoRouter criarRouter({
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
+    observers: [_EscondeAvisos()],
     initialLocation: inicial ?? Rotas.carregando,
     refreshListenable: atualizarQuando,
     redirect: redirecionar,
@@ -178,6 +199,32 @@ GoRouter criarRouter({
         ),
       ),
       GoRoute(
+        path: Rotas.novoInvestimento,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(state, const InvestimentoFormPage()),
+      ),
+      GoRoute(
+        path: '/investimento/:id/editar',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(
+          state,
+          InvestimentoFormPage(id: int.parse(state.pathParameters['id']!)),
+        ),
+      ),
+      GoRoute(
+        path: Rotas.novaMeta,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(state, const MetaFormPage()),
+      ),
+      GoRoute(
+        path: '/meta/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(
+          state,
+          MetaFormPage(id: int.parse(state.pathParameters['id']!)),
+        ),
+      ),
+      GoRoute(
         path: Rotas.novaCategoria,
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (_, state) => paginaModal(
@@ -237,6 +284,14 @@ GoRouter criarRouter({
             GoRoute(
               path: Rotas.investimentos,
               builder: (_, _) => const InvestimentosPage(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  builder: (_, state) => InvestimentoDetalhePage(
+                    id: int.parse(state.pathParameters['id']!),
+                  ),
+                ),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [
@@ -252,6 +307,7 @@ GoRouter criarRouter({
                     GoRoute(path: 'regras', builder: (_, _) => const RegrasPage()),
                   ],
                 ),
+                GoRoute(path: 'orcamento', builder: (_, _) => const OrcamentoPage()),
                 GoRoute(
                   path: 'importar',
                   builder: (_, _) => const ImportarPage(),

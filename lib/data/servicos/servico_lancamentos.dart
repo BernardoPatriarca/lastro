@@ -45,7 +45,19 @@ class ServicoLancamentos {
     ));
   }
 
-  Future<void> atualizar(Lancamento l) => _db.lancamentosDao.atualizar(l);
+  /// Atualiza o lançamento. Se for aporte/resgate de um investimento, o
+  /// movimento ligado a ele acompanha (valor e data).
+  Future<void> atualizar(Lancamento l) async {
+    await _db.lancamentosDao.atualizar(l);
+    if (l.investimentoId != null) {
+      final mov = await _db.investimentosDao.movimentoDoLancamento(l.id);
+      if (mov != null) {
+        await _db.investimentosDao.atualizarMovimento(
+          mov.copyWith(valor: l.valor, data: l.data),
+        );
+      }
+    }
+  }
 
   /// Exclui um lançamento. Pagamento de fatura reabre a fatura; compras no
   /// crédito passam por [ServicoCartao.excluirCompra] (que conhece o escopo).
@@ -62,6 +74,8 @@ class ServicoLancamentos {
       if (l.ocorrenciaCompromissoId != null) {
         await ServicoCompromisso(_db).reabrirOcorrenciaDoLancamento(id);
       }
+      // Aporte/resgate: o movimento do investimento vai junto.
+      await _db.investimentosDao.excluirMovimentoDoLancamento(id);
       await _db.lancamentosDao.excluir(id);
     }
   }
