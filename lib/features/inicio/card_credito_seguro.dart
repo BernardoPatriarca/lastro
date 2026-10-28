@@ -25,108 +25,122 @@ class CardCreditoSeguro extends ConsumerWidget {
     const texto = Colors.white;
     final suave = Colors.white.withValues(alpha: 0.82);
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(28),
-      child: Ink(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: cores,
+    final raio = BorderRadius.circular(28);
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: raio,
+        boxShadow: [
+          BoxShadow(
+            color: cores.first.withValues(alpha: 0.30),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: cores.first.withValues(alpha: 0.30),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: raio,
+        clipBehavior: Clip.antiAlias,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: cores,
             ),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(28),
-          onTap: () => _detalhes(context, r),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(negativo ? Icons.warning_amber_rounded : Icons.shield_outlined,
-                        size: 20, color: texto),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Pode gastar no crédito',
-                        style: tema.textTheme.titleSmall?.copyWith(
-                          color: texto,
-                          fontWeight: FontWeight.w600,
+          ),
+          child: InkWell(
+            onTap: () => _detalhes(context, r),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        negativo
+                            ? Icons.warning_amber_rounded
+                            : Icons.shield_outlined,
+                        size: 20,
+                        color: texto,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Pode gastar no crédito',
+                          style: tema.textTheme.titleSmall?.copyWith(
+                            color: texto,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                    Icon(Icons.info_outline_rounded, size: 18, color: suave),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                TweenAnimationBuilder<int>(
-                  tween: IntTween(begin: r.podeGastar, end: r.podeGastar),
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeOutCubic,
-                  builder: (_, valor, _) => ValorMonetario(
-                    valor,
-                    estilo: tema.textTheme.displaySmall?.copyWith(
-                      color: texto,
-                      fontWeight: FontWeight.w800,
-                    ),
+                      Icon(Icons.info_outline_rounded, size: 18, color: suave),
+                    ],
                   ),
-                ),
-                if (negativo) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Você já passou do que tem em conta. Evite novas compras no crédito.',
-                    style: tema.textTheme.bodySmall?.copyWith(color: texto),
-                  ),
-                ],
-                const SizedBox(height: 18),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: r.percentualComprometido),
-                    duration: const Duration(milliseconds: 600),
+                  const SizedBox(height: 14),
+                  TweenAnimationBuilder<int>(
+                    tween: IntTween(begin: r.podeGastar, end: r.podeGastar),
+                    duration: const Duration(milliseconds: 500),
                     curve: Curves.easeOutCubic,
-                    builder: (_, v, _) => LinearProgressIndicator(
-                      value: v,
-                      minHeight: 8,
-                      backgroundColor: Colors.white.withValues(alpha: 0.22),
-                      color: negativo ? const Color(0xFFFCA5A5) : esquema.secondary,
+                    builder: (_, valor, _) => ValorMonetario(
+                      valor,
+                      estilo: tema.textTheme.displaySmall?.copyWith(
+                        color: texto,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  r.saldoContas <= 0 && (r.comprometidoCartao + r.fixosDescontados) == 0
-                      ? 'Cadastre uma conta e informe o saldo para calcular.'
-                      : '${(r.percentualComprometido * 100).round()}% do saldo já comprometido',
-                  style: tema.textTheme.bodySmall?.copyWith(color: suave),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    _Mini('Em conta', r.saldoContas, suave),
-                    _Mini('No cartão', r.comprometidoCartao, suave),
-                    _Mini('Contas fixas', r.fixosDescontados, suave),
+                  if (negativo) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Você já passou do que tem em conta. Evite novas compras no crédito.',
+                      style: tema.textTheme.bodySmall?.copyWith(color: texto),
+                    ),
                   ],
-                ),
-                if (r.modo == ModoParcelados.parcela && r.comprometidoProximasFaturas > 0) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 18),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: r.percentualComprometido),
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOutCubic,
+                      builder: (_, v, _) => LinearProgressIndicator(
+                        value: v,
+                        minHeight: 8,
+                        backgroundColor: Colors.white.withValues(alpha: 0.22),
+                        color: negativo
+                            ? const Color(0xFFFCA5A5)
+                            : esquema.secondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
-                    'Comprometido nas próximas faturas: ${Moeda.formatar(r.comprometidoProximasFaturas)}',
+                    r.saldoContas <= 0 &&
+                            (r.comprometidoCartao + r.fixosDescontados) == 0
+                        ? 'Cadastre uma conta e informe o saldo para calcular.'
+                        : '${(r.percentualComprometido * 100).round()}% do saldo já comprometido',
                     style: tema.textTheme.bodySmall?.copyWith(color: suave),
                   ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      _Mini('Em conta', r.saldoContas, suave),
+                      _Mini('No cartão', r.comprometidoCartao, suave),
+                      _Mini('Contas fixas', r.fixosDescontados, suave),
+                    ],
+                  ),
+                  if (r.modo == ModoParcelados.parcela &&
+                      r.comprometidoProximasFaturas > 0) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Comprometido nas próximas faturas: ${Moeda.formatar(r.comprometidoProximasFaturas)}',
+                      style: tema.textTheme.bodySmall?.copyWith(color: suave),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -180,28 +194,37 @@ class _DetalhesCredito extends StatelessWidget {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     final r = resultado;
-    Widget linha(String rotulo, int valor, {bool menos = false, bool forte = false}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  menos ? '− $rotulo' : rotulo,
-                  style: forte
-                      ? tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)
-                      : tema.textTheme.bodyMedium,
-                ),
-              ),
-              ValorMonetario(
-                valor,
-                colorirPorSinal: forte,
-                estilo: forte
-                    ? tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)
-                    : tema.textTheme.bodyMedium,
-              ),
-            ],
+    Widget linha(
+      String rotulo,
+      int valor, {
+      bool menos = false,
+      bool forte = false,
+    }) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              menos ? '− $rotulo' : rotulo,
+              style: forte
+                  ? tema.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    )
+                  : tema.textTheme.bodyMedium,
+            ),
           ),
-        );
+          ValorMonetario(
+            valor,
+            colorirPorSinal: forte,
+            estilo: forte
+                ? tema.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  )
+                : tema.textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
 
     return SafeArea(
       child: Padding(
@@ -210,13 +233,19 @@ class _DetalhesCredito extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Como é calculado',
-                style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              'Como é calculado',
+              style: tema.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 6),
             Text(
               'Toda compra no crédito precisa já ter o dinheiro em conta para '
               'pagá-la, nunca o salário que ainda vai entrar.',
-              style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+              style: tema.textTheme.bodySmall?.copyWith(
+                color: tema.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
             linha('Saldo das contas no crédito seguro', r.saldoContas),
@@ -239,8 +268,12 @@ class _DetalhesCredito extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 8),
-            Text('Ajuste o modo em Mais › Configurações › Crédito seguro.',
-                style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant)),
+            Text(
+              'Ajuste o modo em Mais › Configurações › Crédito seguro.',
+              style: tema.textTheme.bodySmall?.copyWith(
+                color: tema.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
       ),

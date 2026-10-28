@@ -185,6 +185,15 @@ Future<void> popularDadosFicticios(AppDatabase db, {DateTime? hoje}) async {
     categoriaId: cat('Transporte/Carro'),
     contaId: corrente,
   );
+  // Contas de meses anteriores ao atual já foram pagas (só o mês atual fica
+  // pendente), como numa vida financeira em dia.
+  final inicioDoMes = Competencia.deData(agora).primeiroDia;
+  for (final o in await db.compromissosDao.todasOcorrencias()) {
+    if (o.dataVencimento.isBefore(inicioDoMes)) {
+      await compServ.pagarOcorrencia(o, data: o.dataVencimento);
+    }
+  }
+
   await compServ.criarReceita(
     descricao: 'Salário',
     valorPrevisto: 450000,

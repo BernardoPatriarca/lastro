@@ -88,10 +88,12 @@ abstract final class TemaLastro {
         backgroundColor: esquema.surfaceContainer,
         indicatorColor: esquema.primaryContainer,
         height: 68,
+        // Cinco abas cabem em celulares estreitos sem quebrar "Investimentos".
+        labelPadding: EdgeInsets.zero,
         labelTextStyle: WidgetStatePropertyAll(
           TextStyle(
             fontFamily: _fonte,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w500,
             color: esquema.onSurface,
           ),

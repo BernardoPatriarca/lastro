@@ -14,17 +14,34 @@ import '../../domain/datas.dart';
 import 'lancamento_acoes.dart';
 
 /// "Pendentes": receitas previstas a confirmar e contas fixas a pagar, com
-/// ação de um toque (tocar na linha permite ajustar valor e conta).
-class PendentesSecao extends ConsumerWidget {
+/// ação de um toque (tocar na linha permite ajustar valor e conta). Mostra as
+/// 3 primeiras; o resto fica atrás de "Ver todas".
+class PendentesSecao extends ConsumerStatefulWidget {
   const PendentesSecao({super.key});
 
+  static const visiveis = 3;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PendentesSecao> createState() => _PendentesSecaoState();
+}
+
+class _PendentesSecaoState extends ConsumerState<PendentesSecao> {
+  bool _todas = false;
+
+  @override
+  Widget build(BuildContext context) {
     final ocorrencias = ref.watch(ocorrenciasPendentesProvider);
     final receitas = ref.watch(receitasPendentesProvider);
     final total = ocorrencias.length + receitas.length;
     if (total == 0) return const SizedBox.shrink();
     final tema = Theme.of(context);
+
+    // Receitas primeiro (dinheiro entrando), depois as contas por vencimento.
+    final linhas = <Widget>[
+      for (final r in receitas) _LinhaReceita(receita: r),
+      for (final o in ocorrencias) _LinhaOcorrencia(ocorrencia: o),
+    ];
+    final mostradas = _todas ? linhas : linhas.take(PendentesSecao.visiveis).toList();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -45,9 +62,20 @@ class PendentesSecao extends ConsumerWidget {
                 ],
               ),
             ),
-            for (final r in receitas) _LinhaReceita(receita: r),
-            for (final o in ocorrencias) _LinhaOcorrencia(ocorrencia: o),
-            const SizedBox(height: 6),
+            ...mostradas,
+            if (total > PendentesSecao.visiveis)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _todas = !_todas),
+                  icon: Icon(_todas ? Icons.expand_less_rounded : Icons.expand_more_rounded),
+                  label: Text(_todas
+                      ? 'Mostrar menos'
+                      : 'Ver todas (${total - PendentesSecao.visiveis} a mais)'),
+                ),
+              )
+            else
+              const SizedBox(height: 6),
           ],
         ),
       ),
@@ -78,7 +106,7 @@ class _LinhaOcorrencia extends ConsumerWidget {
       title: Text('${c.descricao}$sufixo', maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         atrasada
-            ? 'Atrasada há $dias ${dias == 1 ? 'dia' : 'dias'} · venceu ${FormatoData.dia(ocorrencia.dataVencimento)}'
+            ? 'Venceu ${FormatoData.dia(ocorrencia.dataVencimento).substring(0, 5)} · $dias ${dias == 1 ? 'dia' : 'dias'} de atraso'
             : 'Vence ${FormatoData.dia(ocorrencia.dataVencimento)}',
         style: TextStyle(color: atrasada ? context.coresLastro.negativo : null),
       ),
