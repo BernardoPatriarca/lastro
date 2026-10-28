@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers.dart';
+import 'servico_backup.dart';
 import 'servico_cartao.dart';
 import 'servico_compromisso.dart';
 import 'servico_importacao.dart';
@@ -20,4 +21,8 @@ final servicoCompromissoProvider = Provider<ServicoCompromisso>(
 
 final servicoImportacaoProvider = Provider<ServicoImportacao>(
   (ref) => ServicoImportacao(ref.watch(bancoProvider)),
+);
+
+final servicoBackupProvider = Provider<ServicoBackup>(
+  (ref) => ServicoBackup(ref.watch(bancoProvider)),
 );

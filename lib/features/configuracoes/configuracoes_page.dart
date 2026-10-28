@@ -7,6 +7,7 @@ import '../../data/manutencao.dart';
 import '../../data/providers.dart';
 import '../../domain/enums.dart';
 import '../login/auth_controller.dart';
+import 'backup_secao.dart';
 import '../lancamentos/lancamento_acoes.dart';
 
 /// Configurações: crédito seguro, aparência, privacidade e segurança.
@@ -24,6 +25,7 @@ class ConfiguracoesPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
         children: [
+          const LembreteBackup(),
           const _Secao('Crédito seguro'),
           Card(
             child: Column(
@@ -178,9 +180,10 @@ class ConfiguracoesPage extends ConsumerWidget {
     );
   }
 
-  /// Backup e restauração entram aqui (Etapa 10). Em debug, também as
-  /// ferramentas de dados fictícios.
+  /// Backup e, só em debug, as ferramentas de dados fictícios.
   List<Widget> _extras(BuildContext context, WidgetRef ref) => [
+        const _Secao('Backup'),
+        const BackupSecao(),
         if (kDebugMode) ...[
           const _Secao('Desenvolvimento (só em debug)'),
           Card(

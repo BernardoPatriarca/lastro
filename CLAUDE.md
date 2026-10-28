@@ -273,6 +273,27 @@ Execute **uma etapa por vez**. Ao final de cada etapa:
 
 ---
 
+## 10. Decisões de implementação (registradas durante a V1)
+
+Escolhas que não estão óbvias no código ou que ajustam a sugestão da seção 3:
+
+- **Datas** sem hora são gravadas como inteiro `aaaammdd` (conversor `ConversorData`); competências, como texto `aaaa-mm`. `criado_em`/`atualizado_em` usam `DateTime` normal.
+- **Valor sempre positivo**, com uma exceção: em `ajuste_saldo` o sinal do `valor` define o sentido do ajuste.
+- **`lancamentos.conta_id` é nulo nas compras no crédito** (pertencem a um cartão). Colunas extras: `receita_recorrente_id` (vínculo da receita confirmada). Tabela extra: `mapeamentos_csv` (mapeamento por banco).
+- **Parcela de cartão**: cada parcela é um lançamento com data = data da compra + (N−1) meses (assim pesa no mês certo) e `fatura_id` calculado pelo ciclo (regras 5.3/5.4).
+- **Fatura paga** não aceita editar/excluir suas compras; excluir o lançamento de pagamento reabre a fatura. Excluir o lançamento de uma conta fixa paga reabre a ocorrência.
+- **Crédito seguro**: "futura" = fatura de ciclo posterior ao de hoje. Contas fixas pendentes entram até o **maior** vencimento da fatura atual entre os cartões (sem cartões, fim do mês). A checagem de estouro vale para **compra nova** no crédito.
+- **Ocorrências de compromissos** só são geradas a partir do mês anterior ao atual (compromissos antigos não inundam a lista de pendentes).
+- **Receitas recorrentes**: "pendente" vale para o mês atual; "Repetir todo mês" lança o ganho de agora e começa a recorrência no mês seguinte.
+- **Importação**: chave de importação = `c<contaId>`/`k<cartaoId>` + FITID (ou data|valor|descrição normalizada), com `#2`, `#3`… para idênticas no mesmo arquivo. Em fatura de cartão, entradas (estornos, "pagamento recebido") começam desmarcadas e são ignoradas ao importar.
+- **Backup**: JSON `{formato, versaoSchema, exportadoEm, tabelas}` com as linhas cruas do SQLite; restaurar é atômico (transação com FKs adiadas) e recusa versão mais nova. A senha (cofre seguro) nunca entra no backup.
+- **Dados fictícios** (`lib/data/dados_ficticios.dart`) só aparecem em Configurações no modo debug, junto de "Apagar todos os dados".
+- **Android**: `allowBackup=false` (dados financeiros fora do backup automático do Google), tema `AppCompat` e `FlutterFragmentActivity` por causa da biometria. Sem permissão de internet no app de release.
+- **Riverpod 3 pausa streams sem ouvinte**: em testes use `container.listen` antes de `await read(provider.future)`; em código de serviço, leia do banco direto em vez de `ref.read` de `StreamProvider`.
+- Diálogos com `TextEditingController` devem descartá-los com `descartarDepoisDoDialogo` (após a animação de saída).
+
+---
+
 ## 9. Como trabalhar comigo
 - Se algo nesta especificação for ambíguo ou parecer errado, **pergunte antes** de decidir sozinho.
 - Prefira soluções simples e legíveis a abstrações sofisticadas.
