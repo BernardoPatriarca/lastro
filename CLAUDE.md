@@ -292,6 +292,17 @@ Escolhas que não estão óbvias no código ou que ajustam a sugestão da seçã
 - **Riverpod 3 pausa streams sem ouvinte**: em testes use `container.listen` antes de `await read(provider.future)`; em código de serviço, leia do banco direto em vez de `ref.read` de `StreamProvider`.
 - Diálogos com `TextEditingController` devem descartá-los com `descartarDepoisDoDialogo` (após a animação de saída).
 
+### V2 e V3 (implementadas)
+
+- **Investimentos**: saldo = último `atualizacao_saldo` ajustado por aportes/resgates posteriores (mesmo dia: ordem de criação). Aporte/resgate são **lançamentos** na conta + movimento do investimento (excluir/editar um acompanha o outro); "atualizar saldo" é só movimento. Meta sem investimento vinculado usa o patrimônio total.
+- **Metas**: aporte mensal necessário = (alvo − atual) ÷ meses restantes (para cima; meses = dias ÷ 30 para cima, mínimo 1). "No ritmo" = média mensal de aportes líquidos dos últimos 3 meses ≥ necessário; senão "atrasada".
+- **Orçamento**: limite por categoria/mês; o gasto de subcategorias conta também no pai. Faixas: verde < 80%, amarelo 80–100%, vermelho > 100%. "Copiar do mês anterior" nunca sobrescreve.
+- **Alertas** (Início): crédito seguro negativo, contas/faturas atrasadas ou a vencer em até 3 dias, orçamento do mês atual, metas atrasadas e backup com mais de 30 dias.
+- **Notificações**: desligadas por padrão; ao ligar pede a permissão (Android 13+). Aviso N dias antes (0–3) às 9h, até 45 dias à frente, no máximo 60 alarmes, **alarmes inexatos** (sem permissão de alarme exato). Agendadas por instante absoluto (UTC), sem depender do fuso do aparelho. O sincronizador reagenda quando faturas, contas ou configurações mudam.
+- **Relatórios**: "fixo" = gasto que paga um compromisso ou é parcela de compra parcelada no cartão; o resto é variável. Média mensal divide sempre pelo nº de meses da janela.
+- **Layout**: linhas de conta usam `LinhaConta` (não `ListTile` com trailing largo). O teste `telas_estreitas_test.dart` percorre todas as telas e formulários em 320 dp com fonte 1,3x e falha em qualquer overflow: rode-o ao mexer em layouts.
+- **PDF (V3)**: não implementado de propósito. A seção 7 pede avaliar antes; extrair texto de PDF de banco é pouco confiável (cada banco tem um layout). Alternativas propostas ao dono: (1) pedir OFX/CSV ao banco, que o app já importa; (2) "colar texto" do extrato copiado do PDF, lido por regras de data e valor com a mesma tela de revisão.
+
 ---
 
 ## 9. Como trabalhar comigo

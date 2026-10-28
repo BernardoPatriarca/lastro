@@ -7,7 +7,7 @@ Especificação completa: [CLAUDE.md](CLAUDE.md). Identidade visual: [lastro-bra
 - Package: `com.bernardopatriarca.lastro`
 - Stack: Flutter · Riverpod · go_router · drift (SQLite) · fl_chart · local_auth · flutter_secure_storage
 
-## O que o app faz (V1)
+## O que o app faz
 
 - **Login** com senha (hash + salt) e biometria; bloqueio automático e espera de 30 s após 5 erros.
 - **Contas, lançamentos e transferências**, ajuste de saldo, lançamento rápido com teclado numérico.
@@ -17,6 +17,11 @@ Especificação completa: [CLAUDE.md](CLAUDE.md). Identidade visual: [lastro-bra
 - **Início**: totais do mês, taxa de poupança, contas do mês, gastos por categoria e maiores gastos.
 - **Categorias e regras** de categorização; **importação** de OFX e CSV com revisão e deduplicação.
 - **Backup e restauração** em JSON, ocultar valores, tema escuro/claro/automático.
+- **Investimentos e metas**: patrimônio com evolução mensal, aportes, resgates e atualização de saldo; aporte mensal necessário por meta.
+- **Orçamento por categoria** com barras verde/amarela/vermelha e cópia do mês anterior.
+- **Início completo**: alertas, projeção do mês, top categorias com orçamento e progresso das metas.
+- **Notificações** de vencimento de faturas e contas fixas (opcionais).
+- **Relatórios**: evolução, comparativo com o mês anterior, média por categoria e fixos × variáveis.
 
 ## Pré-requisitos
 
