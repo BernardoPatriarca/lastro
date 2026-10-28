@@ -183,7 +183,7 @@ pode_gastar_no_credito =
   − contas fixas pendentes (se "descontar contas fixas" estiver ligado)
 ```
 
-- **Modo de parcelados** (configuração, padrão `rigido`):
+- **Modo de parcelados** (configuração, padrão `parcela`, porque o crédito seguro vale para a **fatura do mês**; o dono pode escolher `rigido` em Configurações):
   - `rigido`: compromisso no cartão = **todo o valor ainda não pago** em todos os cartões (faturas abertas, fechadas não pagas e todas as parcelas futuras).
   - `parcela`: compromisso no cartão = faturas abertas e fechadas não pagas (incluindo as parcelas que caem nelas). As parcelas futuras aparecem como informação separada ("Comprometido nas próximas faturas: R$ X").
 - **Descontar contas fixas** (padrão `ligado`): subtrai as ocorrências de compromissos com status `pendente` e vencimento até o vencimento da próxima fatura.
@@ -291,6 +291,8 @@ Escolhas que não estão óbvias no código ou que ajustam a sugestão da seçã
 - **Android**: `allowBackup=false` (dados financeiros fora do backup automático do Google), tema `AppCompat` e `FlutterFragmentActivity` por causa da biometria. Sem permissão de internet no app de release.
 - **Riverpod 3 pausa streams sem ouvinte**: em testes use `container.listen` antes de `await read(provider.future)`; em código de serviço, leia do banco direto em vez de `ref.read` de `StreamProvider`.
 - Diálogos com `TextEditingController` devem descartá-los com `descartarDepoisDoDialogo` (após a animação de saída).
+- **Padrão do crédito seguro = `parcela`** (fatura do mês): uma compra de R$ 750 em 3x pesa R$ 250 agora, e as parcelas futuras aparecem só como informação. O banco está no **schema v2**: a migração troca `rigido` por `parcela` em quem ainda estava no padrão antigo. Atualizar o app por cima do APK anterior mantém os dados (mesmo pacote e mesma assinatura; a versão em `pubspec.yaml` precisa subir a cada APK novo).
+- **Saldo inicial** é dinheiro que já existe: não entra em Ganhos, Saldo do mês nem taxa de poupança. Lançamentos com data anterior ao "saldo inicial" da conta não alteram o saldo (o formulário avisa).
 
 ### V2 e V3 (implementadas)
 

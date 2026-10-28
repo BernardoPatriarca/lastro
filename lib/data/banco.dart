@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   /// Versão do schema. Ao mudar tabelas: incremente e trate em [onUpgrade].
-  static const versaoSchema = 1;
+  static const versaoSchema = 2;
 
   @override
   int get schemaVersion => versaoSchema;
@@ -66,8 +66,15 @@ class AppDatabase extends _$AppDatabase {
         },
         onUpgrade: (m, de, para) async {
           // Migrations versionadas: um bloco por versão, em ordem.
-          // Exemplo para a futura versão 2:
-          //   if (de < 2) { await m.addColumn(lancamentos, lancamentos.nova); }
+          if (de < 2) {
+            // v2: o crédito seguro passou a valer, por padrão, para a fatura do
+            // mês (modo "parcela"). Quem ainda estava no padrão antigo ("rigido",
+            // que contava todas as parcelas futuras de uma vez) é migrado.
+            await customStatement(
+              "UPDATE configuracoes SET valor = 'parcela' "
+              "WHERE chave = 'modo_parcelados' AND valor = 'rigido'",
+            );
+          }
         },
         beforeOpen: (detalhes) async {
           await customStatement('PRAGMA foreign_keys = ON');

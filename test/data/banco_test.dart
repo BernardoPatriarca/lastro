@@ -29,7 +29,7 @@ void main() {
 
   test('seed grava as configurações padrão', () async {
     final cfg = await db.configuracoesDao.todas();
-    expect(cfg['modo_parcelados'], 'rigido');
+    expect(cfg['modo_parcelados'], 'parcela');
     expect(cfg['comportamento_estouro'], 'confirmar');
     expect(cfg['bloqueio_minutos'], '2');
   });

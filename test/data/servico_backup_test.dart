@@ -47,7 +47,7 @@ void main() {
     expect(await linhas('lancamentos'), lancAntes);
     expect(await linhas('faturas'), fatAntes);
     // as configurações voltaram e o app continua funcional
-    expect((await db.configuracoesDao.todas())['modo_parcelados'], 'rigido');
+    expect((await db.configuracoesDao.todas())['modo_parcelados'], 'parcela');
     await db.lancamentosDao.inserir(LancamentosCompanion.insert(
       tipo: TipoLancamento.ganho, valor: 1, data: DateTime(2026, 1, 1),
     ));

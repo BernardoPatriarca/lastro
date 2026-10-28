@@ -4,7 +4,7 @@ import 'enums.dart';
 class AjustesApp {
   const AjustesApp({
     this.tema = 'dark',
-    this.modoParcelados = ModoParcelados.rigido,
+    this.modoParcelados = ModoParcelados.parcela,
     this.descontarFixos = true,
     this.comportamentoEstouro = ComportamentoEstouro.confirmar,
     this.ocultarValores = false,
@@ -18,7 +18,7 @@ class AjustesApp {
   factory AjustesApp.deMapa(Map<String, String> m) => AjustesApp(
         tema: m['tema'] ?? 'dark',
         modoParcelados: ModoParcelados.values.asNameMap()[m['modo_parcelados']] ??
-            ModoParcelados.rigido,
+            ModoParcelados.parcela,
         descontarFixos: (m['descontar_fixos'] ?? 'true') == 'true',
         comportamentoEstouro:
             ComportamentoEstouro.values.asNameMap()[m['comportamento_estouro']] ??

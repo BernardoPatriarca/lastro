@@ -197,6 +197,16 @@ class _ContaFormPageState extends ConsumerState<ContaFormPage> {
                           ),
                           const SizedBox(height: 24),
                           CampoValor(controller: _saldo, rotulo: 'Saldo inicial'),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6, left: 4),
+                            child: Text(
+                              'Quanto você tem nesta conta hoje. É dinheiro que já existe: '
+                              'não conta como ganho nem como salário.',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ),
                           CheckboxListTile(
                             contentPadding: EdgeInsets.zero,
                             controlAffinity: ListTileControlAffinity.leading,

@@ -35,10 +35,11 @@ void main() {
     await tester.tap(find.text('Configurações'));
     await tester.pumpAndSettle();
 
-    // modo por parcela
-    await tester.tap(find.text('Por parcela'));
-    await tester.pumpAndSettle();
+    // padrão: fatura do mês; dá para escolher o modo rígido
     expect(c.read(ajustesProvider).modoParcelados, ModoParcelados.parcela);
+    await tester.tap(find.text('Tudo de uma vez (rígido)'));
+    await tester.pumpAndSettle();
+    expect(c.read(ajustesProvider).modoParcelados, ModoParcelados.rigido);
 
     // bloquear ao estourar
     await tester.tap(find.text('Bloquear'));

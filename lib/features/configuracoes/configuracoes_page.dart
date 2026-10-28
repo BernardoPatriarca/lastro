@@ -43,17 +43,19 @@ class ConfiguracoesPage extends ConsumerWidget {
                   child: const Column(
                     children: [
                       RadioListTile<ModoParcelados>(
-                        value: ModoParcelados.rigido,
-                        title: Text('Rígido'),
+                        value: ModoParcelados.parcela,
+                        title: Text('Fatura do mês (recomendado)'),
                         subtitle: Text(
-                          'Desconta todo o valor ainda não pago, inclusive as parcelas futuras.',
+                          'Desconta o que cai nas faturas abertas e fechadas: uma compra de R\$ 750 em 3x '
+                          'pesa R\$ 250 agora. As parcelas futuras aparecem só como informação.',
                         ),
                       ),
                       RadioListTile<ModoParcelados>(
-                        value: ModoParcelados.parcela,
-                        title: Text('Por parcela'),
+                        value: ModoParcelados.rigido,
+                        title: Text('Tudo de uma vez (rígido)'),
                         subtitle: Text(
-                          'Desconta só faturas abertas e fechadas; as parcelas futuras aparecem como informação.',
+                          'Desconta todo o valor ainda não pago, inclusive as parcelas futuras: '
+                          'os mesmos R\$ 750 em 3x pesam R\$ 750 agora.',
                         ),
                       ),
                     ],

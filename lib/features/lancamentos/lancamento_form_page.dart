@@ -191,6 +191,14 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
       return;
     }
 
+    // Lançamento numa data anterior ao saldo inicial da conta não muda o saldo.
+    if (!_credito && !_editandoCredito && !_restrito && contaId != null) {
+      final conta = ref.read(contasPorIdProvider)[contaId];
+      if (conta != null && _data.isBefore(conta.dataSaldoInicial)) {
+        if (!await _confirmarDataAnteriorAoSaldoInicial(conta)) return;
+      }
+    }
+
     // Compra nova no crédito: aplica o comportamento do crédito seguro
     // (avisar / confirmar / bloquear) antes de travar o botão.
     if (_credito && !_edicao) {
@@ -332,6 +340,33 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
     } finally {
       if (mounted) setState(() => _salvando = false);
     }
+  }
+
+  /// Avisa que a data é anterior ao saldo inicial da conta: o lançamento não
+  /// altera o saldo (só aparece em listas e relatórios).
+  Future<bool> _confirmarDataAnteriorAoSaldoInicial(Conta conta) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.event_busy_rounded),
+        title: const Text('Data anterior ao saldo inicial'),
+        content: Text(
+          'O saldo inicial de "${conta.nome}" vale a partir de '
+          '${FormatoData.dia(conta.dataSaldoInicial)}. Um lançamento de '
+          '${FormatoData.dia(_data)} não altera o saldo da conta (só aparece nas '
+          'listas e relatórios). Lançar mesmo assim?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size(130, 44)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Lançar mesmo assim'),
+          ),
+        ],
+      ),
+    );
+    return ok == true;
   }
 
   /// Aplica o comportamento configurado quando a compra estoura o crédito

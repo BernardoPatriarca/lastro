@@ -6,7 +6,8 @@ import 'banco.dart';
 /// Configurações padrão (chave → valor).
 const configuracoesPadrao = <String, String>{
   'tema': 'dark',
-  'modo_parcelados': 'rigido',
+  // Crédito seguro vale para a fatura do mês: parcelas futuras só informam.
+  'modo_parcelados': 'parcela',
   'descontar_fixos': 'true',
   'comportamento_estouro': 'confirmar',
   'ocultar_valores': 'false',

@@ -49,7 +49,7 @@ void main() {
     expect(await db.compromissosDao.todosCompromissos(), isEmpty);
     final cats = await db.categoriasDao.todas();
     expect(cats.where((c) => c.tipo == TipoCategoria.ganho), isNotEmpty);
-    expect((await db.configuracoesDao.todas())['modo_parcelados'], 'rigido');
+    expect((await db.configuracoesDao.todas())['modo_parcelados'], 'parcela');
     // dá para popular de novo depois de limpar
     await popularDadosFicticios(db);
     expect((await db.select(db.contas).get()).length, 2);
