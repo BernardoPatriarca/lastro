@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/cartoes/cartao_detalhe_page.dart';
+import '../../features/cartoes/cartao_form_page.dart';
 import '../../features/contas/conta_form_page.dart';
 import '../../features/contas/contas_page.dart';
 import '../../features/lancamentos/lancamento_form_page.dart';
@@ -33,6 +35,9 @@ abstract final class Rotas {
   // Formulários em tela cheia (por cima da barra inferior).
   static const novoLancamento = '/lancamento/novo';
   static String editarLancamento(int id) => '/lancamento/$id';
+  static const novoCartao = '/cartao/novo';
+  static String editarCartao(int id) => '/cartao/$id/editar';
+  static String cartao(int id) => '/cartoes/$id';
   static const novaConta = '/conta/nova';
   static String editarConta(int id) => '/conta/$id';
 }
@@ -111,6 +116,19 @@ GoRouter criarRouter({
         ),
       ),
       GoRoute(
+        path: Rotas.novoCartao,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(state, const CartaoFormPage()),
+      ),
+      GoRoute(
+        path: '/cartao/:id/editar',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(
+          state,
+          CartaoFormPage(id: int.parse(state.pathParameters['id']!)),
+        ),
+      ),
+      GoRoute(
         path: Rotas.novaConta,
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (_, state) => paginaModal(state, const ContaFormPage()),
@@ -137,7 +155,18 @@ GoRouter criarRouter({
             ),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: Rotas.cartoes, builder: (_, _) => const CartoesPage()),
+            GoRoute(
+              path: Rotas.cartoes,
+              builder: (_, _) => const CartoesPage(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  builder: (_, state) => CartaoDetalhePage(
+                    id: int.parse(state.pathParameters['id']!),
+                  ),
+                ),
+              ],
+            ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(

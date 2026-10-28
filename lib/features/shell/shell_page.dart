@@ -1,16 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_router.dart';
+import '../../data/servicos/servicos.dart';
 
 /// Casca com a barra inferior (Início · Lançamentos · Cartões ·
 /// Investimentos · Mais) e o botão flutuante "+" de lançamento rápido.
-class ShellPage extends StatelessWidget {
+class ShellPage extends ConsumerStatefulWidget {
   const ShellPage({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
+  @override
+  ConsumerState<ShellPage> createState() => _ShellPageState();
+}
+
+class _ShellPageState extends ConsumerState<ShellPage> {
   static const _indiceMais = 4;
+
+  StatefulNavigationShell get navigationShell => widget.navigationShell;
+
+  @override
+  void initState() {
+    super.initState();
+    // Manutenção ao abrir o app: faturas cuja data de fechamento passou.
+    ref.read(servicoCartaoProvider).fecharVencidas();
+  }
 
   @override
   Widget build(BuildContext context) {

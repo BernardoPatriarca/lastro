@@ -7,11 +7,17 @@ class EstadoVazio extends StatelessWidget {
     required this.icone,
     required this.titulo,
     this.mensagem,
+    this.acao,
+    this.onAcao,
   });
 
   final IconData icone;
   final String titulo;
   final String? mensagem;
+
+  /// Botão opcional (ex.: "Cadastrar cartão").
+  final String? acao;
+  final VoidCallback? onAcao;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +51,14 @@ class EstadoVazio extends StatelessWidget {
                 style: tema.textTheme.bodyMedium?.copyWith(
                   color: tema.colorScheme.onSurfaceVariant,
                 ),
+              ),
+            ],
+            if (acao != null) ...[
+              const SizedBox(height: 20),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+                onPressed: onAcao,
+                child: Text(acao!),
               ),
             ],
           ],

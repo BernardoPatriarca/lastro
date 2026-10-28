@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/router/app_router.dart';
 import '../../core/widgets/estado_vazio.dart';
 import '../../core/widgets/seletor_mes.dart';
 import '../../core/widgets/valor_monetario.dart';
 import '../../data/banco.dart';
 import '../../data/derivados.dart';
-import '../../data/servicos/servicos.dart';
 import '../../domain/datas.dart';
 import 'filtro_lancamentos.dart';
 import 'filtros_sheet.dart';
-import 'lancamento_tile.dart';
+import 'lancamento_acoes.dart';
 import 'lancamento_util.dart';
 import 'pendentes_secao.dart';
 
@@ -144,7 +141,7 @@ class _LancamentosPageState extends ConsumerState<LancamentosPage> {
                 final e = entradas[i];
                 if (e is _CabecalhoDia) return _Cabecalho(e);
                 final l = e as Lancamento;
-                return _LinhaDispensavel(
+                return LinhaLancamentoDispensavel(
                   key: ValueKey(l.id),
                   lancamento: l,
                 );
@@ -230,62 +227,4 @@ class _Cabecalho extends StatelessWidget {
       ),
     );
   }
-}
-
-class _LinhaDispensavel extends ConsumerWidget {
-  const _LinhaDispensavel({super.key, required this.lancamento});
-  final Lancamento lancamento;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tema = Theme.of(context);
-    return Dismissible(
-      key: ValueKey('d${lancamento.id}'),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        color: tema.colorScheme.error.withValues(alpha: 0.9),
-        child: Icon(Icons.delete_rounded, color: tema.colorScheme.onError),
-      ),
-      confirmDismiss: (_) => confirmarExclusao(context, ref, lancamento),
-      child: LancamentoTile(
-        lancamento: lancamento,
-        onTap: () => context.push(Rotas.editarLancamento(lancamento.id)),
-      ),
-    );
-  }
-}
-
-/// Pede confirmação e exclui. Devolve `true` se o lançamento foi excluído.
-Future<bool> confirmarExclusao(
-  BuildContext context,
-  WidgetRef ref,
-  Lancamento l,
-) async {
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Excluir lançamento?'),
-      content: Text(
-        l.descricao.isNotEmpty
-            ? '"${l.descricao}" será removido.'
-            : 'Esta ação não pode ser desfeita.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(minimumSize: const Size(90, 44)),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Excluir'),
-        ),
-      ],
-    ),
-  );
-  if (ok != true) return false;
-  await ref.read(servicoLancamentosProvider).excluir(l.id);
-  return true;
 }

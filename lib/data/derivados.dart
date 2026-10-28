@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/widgets/seletor_mes.dart';
 import '../domain/competencia.dart';
 import '../domain/enums.dart';
+import '../domain/fatura.dart';
 import '../domain/saldo.dart';
 import 'banco.dart';
 import 'providers.dart';
@@ -123,4 +124,85 @@ TotaisMes calcularTotaisMes(Iterable<Lancamento> lancs, Competencia mes) {
 final totaisDoMesProvider = Provider<TotaisMes>((ref) {
   final mes = ref.watch(mesSelecionadoProvider);
   return calcularTotaisMes(ref.watch(lancamentosProvider).ou, mes);
+});
+
+// ---------------------------------------------------------------------------
+// Cartões e faturas
+// ---------------------------------------------------------------------------
+
+/// Total de cada fatura (id → centavos), somando as compras no crédito.
+final totaisFaturasProvider = Provider<Map<int, int>>((ref) {
+  final totais = <int, int>{};
+  for (final l in ref.watch(lancamentosProvider).ou) {
+    final f = l.faturaId;
+    if (f != null && l.tipo == TipoLancamento.gasto) {
+      totais[f] = (totais[f] ?? 0) + l.valor;
+    }
+  }
+  return totais;
+});
+
+/// Visão de um cartão: limite, usado, disponível e fatura corrente.
+class ResumoCartao {
+  const ResumoCartao({
+    required this.cartao,
+    required this.usado,
+    required this.ciclo,
+    required this.faturaAtual,
+    required this.totalFaturaAtual,
+  });
+
+  final Cartao cartao;
+
+  /// Tudo que ainda não foi pago (faturas abertas, fechadas e futuras).
+  final int usado;
+  final CicloFatura ciclo;
+
+  /// Fatura do ciclo de hoje (nula se ainda não há compras nela).
+  final Fatura? faturaAtual;
+  final int totalFaturaAtual;
+
+  int get disponivel => cartao.limite - usado;
+  double get percentualUsado =>
+      cartao.limite <= 0 ? 0 : (usado / cartao.limite).clamp(0, 1).toDouble();
+}
+
+final resumosCartaoProvider = Provider<List<ResumoCartao>>((ref) {
+  final cartoes = ref.watch(cartoesProvider).ou;
+  final faturas = ref.watch(faturasProvider).ou;
+  final totais = ref.watch(totaisFaturasProvider);
+  final hoje = DateTime.now();
+  final dia = DateTime(hoje.year, hoje.month, hoje.day);
+
+  final pagas = {
+    for (final f in faturas) if (f.status == StatusFatura.paga) f.id,
+  };
+  final naoPagoPorCartao = <int, int>{};
+  for (final f in faturas) {
+    if (pagas.contains(f.id)) continue;
+    naoPagoPorCartao[f.cartaoId] =
+        (naoPagoPorCartao[f.cartaoId] ?? 0) + (totais[f.id] ?? 0);
+  }
+
+  return [
+    for (final c in cartoes)
+      () {
+        final ciclo = cicloDaCompra(
+          dia,
+          diaFechamento: c.diaFechamento,
+          diaVencimento: c.diaVencimento,
+        );
+        final atual = faturas
+            .where((f) =>
+                f.cartaoId == c.id && f.competencia == ciclo.competencia.chave)
+            .firstOrNull;
+        return ResumoCartao(
+          cartao: c,
+          usado: naoPagoPorCartao[c.id] ?? 0,
+          ciclo: ciclo,
+          faturaAtual: atual,
+          totalFaturaAtual: atual == null ? 0 : (totais[atual.id] ?? 0),
+        );
+      }(),
+  ];
 });

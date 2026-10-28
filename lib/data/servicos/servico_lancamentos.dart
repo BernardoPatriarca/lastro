@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../../domain/datas.dart';
 import '../../domain/enums.dart';
 import '../banco.dart';
+import 'servico_cartao.dart';
 
 /// Escritas de lançamentos que não envolvem cartão (ver `ServicoCartao`).
 class ServicoLancamentos {
@@ -45,7 +46,20 @@ class ServicoLancamentos {
 
   Future<void> atualizar(Lancamento l) => _db.lancamentosDao.atualizar(l);
 
-  Future<void> excluir(int id) => _db.lancamentosDao.excluir(id);
+  /// Exclui um lançamento. Pagamento de fatura reabre a fatura; compras no
+  /// crédito passam por [ServicoCartao.excluirCompra] (que conhece o escopo).
+  Future<void> excluir(int id) async {
+    final l = await _db.lancamentosDao.obter(id);
+    if (l == null) return;
+    final cartao = ServicoCartao(_db);
+    if (l.tipo == TipoLancamento.pagamentoFatura) {
+      await cartao.desfazerPagamento(l);
+    } else if (l.formaPagamento == FormaPagamento.credito) {
+      await cartao.excluirCompra(l, EscopoParcelas.soEsta);
+    } else {
+      await _db.lancamentosDao.excluir(id);
+    }
+  }
 
   /// "Ajustar saldo": o dono informa o saldo real do banco e o app lança a
   /// diferença como `ajusteSaldo` (positivo ou negativo). Devolve a diferença.

@@ -4,16 +4,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/formatadores/data.dart';
+import '../../core/formatadores/moeda.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/cores_lastro.dart';
 import '../../core/widgets/campo_valor.dart';
 import '../../data/banco.dart';
 import '../../data/derivados.dart';
 import '../../data/providers.dart';
+import '../../data/servicos/servico_cartao.dart';
 import '../../data/servicos/servicos.dart';
 import '../../domain/datas.dart';
 import '../../domain/enums.dart';
+import '../../domain/parcelas.dart';
+import '../cartoes/previa_compra.dart';
 import '../categorias/seletor_categoria.dart';
+import 'lancamento_acoes.dart';
 
 enum _Aba { gasto, ganho, movimento }
 
@@ -56,9 +61,20 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
   FormaPagamento _forma = FormaPagamento.pix;
   int? _contaId;
   int? _contaDestinoId;
+  int? _cartaoId;
+  int _parcelas = 1;
+
+  /// Compra parcelada em edição: parcela N de M.
+  CompraParcelada? _compra;
   DateTime _data = soData(DateTime.now());
 
   bool get _edicao => widget.id != null;
+
+  bool get _credito => _aba == _Aba.gasto && _forma == FormaPagamento.credito;
+
+  /// Editando uma compra no crédito: a forma de pagamento não muda.
+  bool get _editandoCredito =>
+      _original?.formaPagamento == FormaPagamento.credito;
 
   /// Lançamentos criados pelo app (fatura, ajuste) só aceitam descrição/data.
   bool get _restrito =>
@@ -82,21 +98,27 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
   }
 
   Future<void> _carregar() async {
-    final l = await ref.read(bancoProvider).lancamentosDao.obter(widget.id!);
+    final dao = ref.read(bancoProvider).lancamentosDao;
+    final l = await dao.obter(widget.id!);
     if (!mounted) return;
     if (l == null) {
       context.pop();
       return;
     }
+    final compra =
+        l.compraParceladaId == null ? null : await dao.compra(l.compraParceladaId!);
+    if (!mounted) return;
+    _compra = compra;
     setState(() {
       _original = l;
       _carregando = false;
       _valor.centavos = l.valor.abs();
-      _descricao.text = l.descricao;
+      _descricao.text = compra == null ? l.descricao : descricaoBase(l.descricao);
       _categoriaId = l.categoriaId;
       _contaId = l.contaId;
       _contaDestinoId = l.contaDestinoId;
       _data = l.data;
+      _cartaoId = l.cartaoId;
       if (l.formaPagamento != null) _forma = l.formaPagamento!;
       switch (l.tipo) {
         case TipoLancamento.ganho:
@@ -147,15 +169,54 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
     if (!_chave.currentState!.validate() || _salvando) return;
     final contas = ref.read(contasAtivasProvider);
     final contaId = _contaId ?? (contas.isNotEmpty ? contas.first.id : null);
-    if (!_restrito && contaId == null) {
+    final cartoes = ref.read(cartoesProvider).ou;
+    final cartaoId = _cartaoId ?? (cartoes.isNotEmpty ? cartoes.first.id : null);
+
+    if (_credito || _editandoCredito) {
+      if (cartaoId == null) {
+        _aviso('Cadastre um cartão antes de lançar no crédito.');
+        return;
+      }
+    } else if (!_restrito && contaId == null) {
       _aviso('Cadastre uma conta antes de lançar.');
       return;
     }
+
     setState(() => _salvando = true);
     try {
       final servico = ref.read(servicoLancamentosProvider);
+      final cartaoServico = ref.read(servicoCartaoProvider);
       final original = _original;
-      if (original != null) {
+      final cartao = cartaoId == null
+          ? null
+          : cartoes.firstWhere((c) => c.id == cartaoId);
+
+      if (original != null && _editandoCredito && !_restrito) {
+        if (_compra != null) {
+          final escopo = await perguntarEscopo(
+            context,
+            titulo: 'Aplicar a alteração em quais parcelas?',
+            permitirTodas: true,
+          );
+          if (escopo == null) return;
+          await cartaoServico.atualizarParcelas(
+            original,
+            escopo,
+            valorParcela: _valor.centavos,
+            descricaoBase: _descricao.text,
+            categoriaId: _categoriaId,
+          );
+        } else {
+          await cartaoServico.atualizarCompraUnica(
+            original,
+            cartao: cartao!,
+            valor: _valor.centavos,
+            data: _data,
+            descricao: _descricao.text,
+            categoriaId: _categoriaId,
+          );
+        }
+      } else if (original != null) {
         await servico.atualizar(_restrito
             ? original.copyWith(data: _data, descricao: _descricao.text.trim())
             : original.copyWith(
@@ -170,6 +231,15 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                   _tipo == TipoLancamento.transferencia ? _contaDestinoId : null,
                 ),
               ));
+      } else if (_credito) {
+        await cartaoServico.registrarCompra(
+          cartao: cartao!,
+          valorTotal: _valor.centavos,
+          parcelas: _parcelas,
+          data: _data,
+          descricao: _descricao.text,
+          categoriaId: _categoriaId,
+        );
       } else {
         await servico.registrar(
           tipo: _tipo,
@@ -185,7 +255,9 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
       }
       if (!mounted) return;
       context.pop();
-      _aviso(_edicao ? 'Lançamento atualizado' : 'Lançamento salvo');
+      mostrarAviso(context, _edicao ? 'Lançamento atualizado' : 'Lançamento salvo');
+    } on OperacaoInvalida catch (e) {
+      if (mounted) _aviso(e.mensagem);
     } finally {
       if (mounted) setState(() => _salvando = false);
     }
@@ -212,6 +284,8 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
       _Aba.movimento => tema.colorScheme.onSurface,
     };
     final contaId = _contaId ?? (contas.isNotEmpty ? contas.first.id : null);
+    final semCartoes = ref.watch(cartoesProvider).hasValue &&
+        ref.watch(cartoesProvider).ou.isEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -283,7 +357,25 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                               ),
                             ),
                           ),
-                          if (semContas && !_restrito) ...[
+                          if (_compra != null && _original != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: _Aviso(
+                                'Parcela ${_original!.parcelaNumero} de '
+                                '${_compra!.numeroParcelas} · compra de '
+                                '${Moeda.formatar(_compra!.valorTotal)}. '
+                                'O valor aqui é o de cada parcela.',
+                              ),
+                            ),
+                          if (semCartoes && (_credito || _editandoCredito)) ...[
+                            const SizedBox(height: 8),
+                            _Aviso(
+                              'Você ainda não tem um cartão cadastrado.',
+                              acao: 'Cadastrar',
+                              onAcao: () => context.push(Rotas.novoCartao),
+                            ),
+                          ],
+                          if (semContas && !_restrito && !_credito) ...[
                             const SizedBox(height: 8),
                             _Aviso(
                               'Você ainda não tem uma conta. Crie uma para '
@@ -294,7 +386,11 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                           ],
                           if (!_restrito) ..._camposPrincipais(contas, contaId),
                           const SizedBox(height: 20),
-                          _Secao(
+                          IgnorePointer(
+                            ignoring: _compra != null,
+                            child: Opacity(
+                              opacity: _compra != null ? 0.5 : 1,
+                              child: _Secao(
                             'Data',
                             child: Row(
                               children: [
@@ -325,6 +421,8 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                                       )),
                                 ),
                               ],
+                            ),
+                          ),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -359,6 +457,53 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
     );
   }
 
+  /// Cartão, parcelas e prévia da fatura (compra no crédito).
+  List<Widget> _camposCredito() {
+    final cartoes = [for (final c in ref.watch(cartoesProvider).ou) if (c.ativo) c];
+    final cartaoId = _cartaoId ?? (cartoes.isNotEmpty ? cartoes.first.id : null);
+    final cartao = cartoes.where((c) => c.id == cartaoId).firstOrNull;
+    final parcelada = _compra != null;
+    return [
+      _Secao(
+        'Cartão',
+        child: DropdownButtonFormField<int>(
+          key: ValueKey('${cartoes.length}-$cartaoId'),
+          initialValue: cartao?.id,
+          isExpanded: true,
+          decoration: const InputDecoration(prefixIcon: Icon(Icons.credit_card_rounded)),
+          hint: const Text('Escolha o cartão'),
+          items: [
+            for (final c in cartoes) DropdownMenuItem(value: c.id, child: Text(c.nome)),
+          ],
+          // Parcelas já geradas ficam no cartão original.
+          onChanged: parcelada ? null : (v) => setState(() => _cartaoId = v),
+        ),
+      ),
+      if (!_edicao) ...[
+        const SizedBox(height: 20),
+        _Secao(
+          'Parcelas',
+          child: SeletorParcelas(
+            parcelas: _parcelas,
+            onChanged: (n) => setState(() => _parcelas = n),
+          ),
+        ),
+      ],
+      if (cartao != null && !parcelada) ...[
+        const SizedBox(height: 16),
+        ListenableBuilder(
+          listenable: _valor,
+          builder: (_, _) => PreviaCompra(
+            cartao: cartao,
+            valorTotal: _valor.centavos,
+            parcelas: _edicao ? 1 : _parcelas,
+            data: _data,
+          ),
+        ),
+      ],
+    ];
+  }
+
   List<Widget> _camposPrincipais(List<Conta> contas, int? contaId) {
     return [
       if (_aba == _Aba.movimento) ...[
@@ -385,7 +530,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
           ),
         ),
       ],
-      if (_aba == _Aba.gasto) ...[
+      if (_aba == _Aba.gasto && !_editandoCredito) ...[
         const SizedBox(height: 20),
         _Secao(
           'Forma de pagamento',
@@ -393,18 +538,22 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final f in FormaPagamento.values.where((f) => f != FormaPagamento.credito))
-                ChoiceChip(
-                  label: Text(f.rotulo),
-                  selected: _forma == f,
-                  showCheckmark: false,
-                  onSelected: (_) => setState(() => _forma = f),
-                ),
+              for (final f in FormaPagamento.values)
+                // Ao editar um lançamento existente a forma "crédito" não
+                // entra: ele já nasceu como débito/pix/etc.
+                if (f != FormaPagamento.credito || !_edicao)
+                  ChoiceChip(
+                    label: Text(f.rotulo),
+                    selected: _forma == f,
+                    showCheckmark: false,
+                    onSelected: (_) => setState(() => _forma = f),
+                  ),
             ],
           ),
         ),
       ],
       const SizedBox(height: 20),
+      if (_credito || _editandoCredito) ..._camposCredito() else
       _Secao(
         _tipo == TipoLancamento.transferencia
             ? 'De (conta de origem)'
