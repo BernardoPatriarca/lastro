@@ -66,6 +66,10 @@ final orcamentosProvider = StreamProvider<List<Orcamento>>(
   (ref) => ref.watch(bancoProvider).investimentosDao.watchOrcamentos(),
 );
 
+final mapeamentosCsvProvider = StreamProvider<List<MapeamentoCsvSalvo>>(
+  (ref) => ref.watch(bancoProvider).mapeamentosDao.watchTodos(),
+);
+
 final _configuracoesBrutasProvider = StreamProvider<Map<String, String>>(
   (ref) => ref.watch(bancoProvider).configuracoesDao.watchTodas(),
 );

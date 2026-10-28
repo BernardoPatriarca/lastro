@@ -225,7 +225,7 @@ class Configuracoes extends Table {
 }
 
 /// Mapeamento de colunas de CSV salvo por banco (Etapa 9).
-@DataClassName('MapeamentoCsv')
+@DataClassName('MapeamentoCsvSalvo')
 class MapeamentosCsv extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get nome => text().unique()();

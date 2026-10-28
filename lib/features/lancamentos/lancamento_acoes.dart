@@ -9,6 +9,17 @@ import '../../data/servicos/servicos.dart';
 import '../../domain/enums.dart';
 import 'lancamento_tile.dart';
 
+/// Descarta controladores de um diálogo **depois** da animação de saída: se
+/// fossem descartados logo após `showDialog` retornar, o campo de texto ainda
+/// em animação usaria um controlador já descartado.
+void descartarDepoisDoDialogo(List<ChangeNotifier> controladores) {
+  Future<void>.delayed(const Duration(milliseconds: 500), () {
+    for (final c in controladores) {
+      c.dispose();
+    }
+  });
+}
+
 void mostrarAviso(BuildContext context, String texto) {
   final m = ScaffoldMessenger.maybeOf(context);
   m?.hideCurrentSnackBar();

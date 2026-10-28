@@ -241,6 +241,6 @@ Future<RespostaConfirmacao?> dialogoConfirmacao(
       ),
     ),
   );
-  valor.dispose();
+  descartarDepoisDoDialogo([valor]);
   return r;
 }

@@ -27,6 +27,12 @@ class MaisPage extends StatelessWidget {
             onTap: () => context.push(Rotas.compromissos),
           ),
           _Item(
+            icone: Icons.upload_file_rounded,
+            titulo: 'Importar extrato',
+            subtitulo: 'OFX ou CSV do banco, com revisão antes de lançar',
+            onTap: () => context.push(Rotas.importar),
+          ),
+          _Item(
             icone: Icons.category_rounded,
             titulo: 'Categorias',
             subtitulo: 'Categorias, subcategorias e regras de categorização',

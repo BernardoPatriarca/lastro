@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../lancamentos/lancamento_acoes.dart';
+
 import '../../core/formatadores/moeda.dart';
 import '../../core/widgets/campo_valor.dart';
 import '../../data/banco.dart';
@@ -67,7 +69,7 @@ Future<void> ajustarSaldoDialog(
       },
     ),
   );
-  valor.dispose();
+  descartarDepoisDoDialogo([valor]);
   if (resultado == null) return;
   final dif = await ref.read(servicoLancamentosProvider).ajustarSaldo(
         contaId: conta.id,

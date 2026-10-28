@@ -104,12 +104,14 @@ class SeletorCategoria extends ConsumerWidget {
   }
 }
 
-/// Folha com todas as categorias (subcategorias recuadas). Devolve o id.
+/// Folha com todas as categorias (subcategorias recuadas). Devolve o id
+/// (ou 0 para "sem categoria", quando [incluirNenhuma]).
 Future<int?> escolherCategoria(
   BuildContext context,
   WidgetRef ref,
-  TipoCategoria tipo,
-) {
+  TipoCategoria tipo, {
+  bool incluirNenhuma = false,
+}) {
   final todas = [
     for (final c in ref.read(categoriasProvider).ou)
       if (c.ativa && c.tipo == tipo) c,
@@ -127,6 +129,13 @@ Future<int?> escolherCategoria(
         controller: scroll,
         padding: const EdgeInsets.only(bottom: 24),
         children: [
+          if (incluirNenhuma)
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              leading: const IconeCategoria(icone: Icons.block_rounded, tamanho: 40),
+              title: const Text('Sem categoria'),
+              onTap: () => Navigator.of(ctx).pop(0),
+            ),
           for (final pai in pais) ...[
             _LinhaCategoria(categoria: pai, nivel: 0, ctx: ctx),
             for (final f in todas.where((c) => c.categoriaPaiId == pai.id))

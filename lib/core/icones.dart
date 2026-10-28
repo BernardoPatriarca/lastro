@@ -40,3 +40,6 @@ const List<int> coresDisponiveis = [
   0xFF0F766E, 0xFF14B8A6, 0xFF16A34A, 0xFF22C55E, 0xFF3B82F6, 0xFF6366F1,
   0xFF8B5CF6, 0xFFEC4899, 0xFFEF4444, 0xFFF59E0B, 0xFF64748B, 0xFF94A3B8,
 ];
+
+/// Alias de [iconeDe] para uso fora de widgets.
+IconData iconeDeChave(String? chave) => iconeDe(chave);

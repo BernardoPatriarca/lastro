@@ -13,6 +13,9 @@ import '../../features/compromissos/receita_form_page.dart';
 import '../../features/configuracoes/configuracoes_page.dart';
 import '../../features/contas/conta_form_page.dart';
 import '../../features/contas/contas_page.dart';
+import '../../features/importacao/importar_page.dart';
+import '../../features/importacao/mapear_csv_page.dart';
+import '../../features/importacao/revisao_page.dart';
 import '../../features/lancamentos/lancamento_form_page.dart';
 
 import '../../features/cartoes/cartoes_page.dart';
@@ -42,6 +45,9 @@ abstract final class Rotas {
   static const configuracoes = '/mais/configuracoes';
   static const categorias = '/mais/categorias';
   static const regras = '/mais/categorias/regras';
+  static const importar = '/mais/importar';
+  static const importarMapear = '/mais/importar/mapear';
+  static const importarRevisar = '/mais/importar/revisar';
 
   // Formulários em tela cheia (por cima da barra inferior).
   static const novoLancamento = '/lancamento/novo';
@@ -244,6 +250,14 @@ GoRouter criarRouter({
                   builder: (_, _) => const CategoriasPage(),
                   routes: [
                     GoRoute(path: 'regras', builder: (_, _) => const RegrasPage()),
+                  ],
+                ),
+                GoRoute(
+                  path: 'importar',
+                  builder: (_, _) => const ImportarPage(),
+                  routes: [
+                    GoRoute(path: 'mapear', builder: (_, _) => const MapearCsvPage()),
+                    GoRoute(path: 'revisar', builder: (_, _) => const RevisaoImportacaoPage()),
                   ],
                 ),
                 GoRoute(

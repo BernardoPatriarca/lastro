@@ -7444,7 +7444,7 @@ class ConfiguracoesCompanion extends UpdateCompanion<Configuracao> {
 }
 
 class $MapeamentosCsvTable extends MapeamentosCsv
-    with TableInfo<$MapeamentosCsvTable, MapeamentoCsv> {
+    with TableInfo<$MapeamentosCsvTable, MapeamentoCsvSalvo> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -7590,7 +7590,7 @@ class $MapeamentosCsvTable extends MapeamentosCsv
   static const String $name = 'mapeamentos_csv';
   @override
   VerificationContext validateIntegrity(
-    Insertable<MapeamentoCsv> instance, {
+    Insertable<MapeamentoCsvSalvo> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -7681,9 +7681,9 @@ class $MapeamentosCsvTable extends MapeamentosCsv
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  MapeamentoCsv map(Map<String, dynamic> data, {String? tablePrefix}) {
+  MapeamentoCsvSalvo map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return MapeamentoCsv(
+    return MapeamentoCsvSalvo(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -7733,7 +7733,8 @@ class $MapeamentosCsvTable extends MapeamentosCsv
   }
 }
 
-class MapeamentoCsv extends DataClass implements Insertable<MapeamentoCsv> {
+class MapeamentoCsvSalvo extends DataClass
+    implements Insertable<MapeamentoCsvSalvo> {
   final int id;
   final String nome;
   final String separador;
@@ -7746,7 +7747,7 @@ class MapeamentoCsv extends DataClass implements Insertable<MapeamentoCsv> {
 
   /// Faturas de cartão costumam trazer compras como valor positivo.
   final bool positivoEhGasto;
-  const MapeamentoCsv({
+  const MapeamentoCsvSalvo({
     required this.id,
     required this.nome,
     required this.separador,
@@ -7793,12 +7794,12 @@ class MapeamentoCsv extends DataClass implements Insertable<MapeamentoCsv> {
     );
   }
 
-  factory MapeamentoCsv.fromJson(
+  factory MapeamentoCsvSalvo.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return MapeamentoCsv(
+    return MapeamentoCsvSalvo(
       id: serializer.fromJson<int>(json['id']),
       nome: serializer.fromJson<String>(json['nome']),
       separador: serializer.fromJson<String>(json['separador']),
@@ -7828,7 +7829,7 @@ class MapeamentoCsv extends DataClass implements Insertable<MapeamentoCsv> {
     };
   }
 
-  MapeamentoCsv copyWith({
+  MapeamentoCsvSalvo copyWith({
     int? id,
     String? nome,
     String? separador,
@@ -7839,7 +7840,7 @@ class MapeamentoCsv extends DataClass implements Insertable<MapeamentoCsv> {
     Value<int?> colunaTipo = const Value.absent(),
     String? formatoData,
     bool? positivoEhGasto,
-  }) => MapeamentoCsv(
+  }) => MapeamentoCsvSalvo(
     id: id ?? this.id,
     nome: nome ?? this.nome,
     separador: separador ?? this.separador,
@@ -7851,8 +7852,8 @@ class MapeamentoCsv extends DataClass implements Insertable<MapeamentoCsv> {
     formatoData: formatoData ?? this.formatoData,
     positivoEhGasto: positivoEhGasto ?? this.positivoEhGasto,
   );
-  MapeamentoCsv copyWithCompanion(MapeamentosCsvCompanion data) {
-    return MapeamentoCsv(
+  MapeamentoCsvSalvo copyWithCompanion(MapeamentosCsvCompanion data) {
+    return MapeamentoCsvSalvo(
       id: data.id.present ? data.id.value : this.id,
       nome: data.nome.present ? data.nome.value : this.nome,
       separador: data.separador.present ? data.separador.value : this.separador,
@@ -7882,7 +7883,7 @@ class MapeamentoCsv extends DataClass implements Insertable<MapeamentoCsv> {
 
   @override
   String toString() {
-    return (StringBuffer('MapeamentoCsv(')
+    return (StringBuffer('MapeamentoCsvSalvo(')
           ..write('id: $id, ')
           ..write('nome: $nome, ')
           ..write('separador: $separador, ')
@@ -7913,7 +7914,7 @@ class MapeamentoCsv extends DataClass implements Insertable<MapeamentoCsv> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is MapeamentoCsv &&
+      (other is MapeamentoCsvSalvo &&
           other.id == this.id &&
           other.nome == this.nome &&
           other.separador == this.separador &&
@@ -7926,7 +7927,7 @@ class MapeamentoCsv extends DataClass implements Insertable<MapeamentoCsv> {
           other.positivoEhGasto == this.positivoEhGasto);
 }
 
-class MapeamentosCsvCompanion extends UpdateCompanion<MapeamentoCsv> {
+class MapeamentosCsvCompanion extends UpdateCompanion<MapeamentoCsvSalvo> {
   final Value<int> id;
   final Value<String> nome;
   final Value<String> separador;
@@ -7964,7 +7965,7 @@ class MapeamentosCsvCompanion extends UpdateCompanion<MapeamentoCsv> {
        colunaData = Value(colunaData),
        colunaDescricao = Value(colunaDescricao),
        colunaValor = Value(colunaValor);
-  static Insertable<MapeamentoCsv> custom({
+  static Insertable<MapeamentoCsvSalvo> custom({
     Expression<int>? id,
     Expression<String>? nome,
     Expression<String>? separador,
@@ -8123,6 +8124,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final ConfiguracoesDao configuracoesDao = ConfiguracoesDao(
+    this as AppDatabase,
+  );
+  late final MapeamentosDao mapeamentosDao = MapeamentosDao(
     this as AppDatabase,
   );
   @override
@@ -16290,17 +16294,21 @@ class $$MapeamentosCsvTableTableManager
         RootTableManager<
           _$AppDatabase,
           $MapeamentosCsvTable,
-          MapeamentoCsv,
+          MapeamentoCsvSalvo,
           $$MapeamentosCsvTableFilterComposer,
           $$MapeamentosCsvTableOrderingComposer,
           $$MapeamentosCsvTableAnnotationComposer,
           $$MapeamentosCsvTableCreateCompanionBuilder,
           $$MapeamentosCsvTableUpdateCompanionBuilder,
           (
-            MapeamentoCsv,
-            BaseReferences<_$AppDatabase, $MapeamentosCsvTable, MapeamentoCsv>,
+            MapeamentoCsvSalvo,
+            BaseReferences<
+              _$AppDatabase,
+              $MapeamentosCsvTable,
+              MapeamentoCsvSalvo
+            >,
           ),
-          MapeamentoCsv,
+          MapeamentoCsvSalvo,
           PrefetchHooks Function()
         > {
   $$MapeamentosCsvTableTableManager(
@@ -16367,11 +16375,11 @@ class $$MapeamentosCsvTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$MapeamentosCsvTable, MapeamentoCsv>(table),
+                  e.readTable<$MapeamentosCsvTable, MapeamentoCsvSalvo>(table),
                   BaseReferences<
                     _$AppDatabase,
                     $MapeamentosCsvTable,
-                    MapeamentoCsv
+                    MapeamentoCsvSalvo
                   >(db, table, e),
                 ),
               )
@@ -16385,17 +16393,17 @@ typedef $$MapeamentosCsvTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
       $MapeamentosCsvTable,
-      MapeamentoCsv,
+      MapeamentoCsvSalvo,
       $$MapeamentosCsvTableFilterComposer,
       $$MapeamentosCsvTableOrderingComposer,
       $$MapeamentosCsvTableAnnotationComposer,
       $$MapeamentosCsvTableCreateCompanionBuilder,
       $$MapeamentosCsvTableUpdateCompanionBuilder,
       (
-        MapeamentoCsv,
-        BaseReferences<_$AppDatabase, $MapeamentosCsvTable, MapeamentoCsv>,
+        MapeamentoCsvSalvo,
+        BaseReferences<_$AppDatabase, $MapeamentosCsvTable, MapeamentoCsvSalvo>,
       ),
-      MapeamentoCsv,
+      MapeamentoCsvSalvo,
       PrefetchHooks Function()
     >;
 

@@ -10,6 +10,7 @@ import 'daos/configuracoes_dao.dart';
 import 'daos/contas_dao.dart';
 import 'daos/investimentos_dao.dart';
 import 'daos/lancamentos_dao.dart';
+import 'daos/mapeamentos_dao.dart';
 import 'seed.dart';
 import 'tabelas.dart';
 
@@ -42,6 +43,7 @@ part 'banco.g.dart';
     CompromissosDao,
     InvestimentosDao,
     ConfiguracoesDao,
+    MapeamentosDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {

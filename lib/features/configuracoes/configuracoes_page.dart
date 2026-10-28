@@ -332,9 +332,7 @@ class ConfiguracoesPage extends ConsumerWidget {
         ),
       ),
     );
-    atual.dispose();
-    nova.dispose();
-    confirma.dispose();
+    descartarDepoisDoDialogo([atual, nova, confirma]);
     if (trocou == true && context.mounted) mostrarAviso(context, 'Senha alterada');
   }
 }
