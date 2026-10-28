@@ -203,8 +203,9 @@ class _CartaoFormPageState extends ConsumerState<CartaoFormPage> {
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<int>(
+                                  isExpanded: true,
                                   initialValue: _fechamento,
-                                  decoration: const InputDecoration(labelText: 'Dia do fechamento'),
+                                  decoration: const InputDecoration(labelText: 'Fechamento'),
                                   items: [for (final d in dias) DropdownMenuItem(value: d, child: Text('Dia $d'))],
                                   onChanged: (v) => setState(() => _fechamento = v!),
                                 ),
@@ -212,8 +213,9 @@ class _CartaoFormPageState extends ConsumerState<CartaoFormPage> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: DropdownButtonFormField<int>(
+                                  isExpanded: true,
                                   initialValue: _vencimento,
-                                  decoration: const InputDecoration(labelText: 'Dia do vencimento'),
+                                  decoration: const InputDecoration(labelText: 'Vencimento'),
                                   items: [for (final d in dias) DropdownMenuItem(value: d, child: Text('Dia $d'))],
                                   onChanged: (v) => setState(() => _vencimento = v!),
                                 ),

@@ -12,6 +12,7 @@ import '../../domain/datas.dart';
 import '../../domain/resumo_mes.dart';
 import '../cartoes/pagar_fatura.dart';
 import '../lancamentos/lancamento_acoes.dart';
+import '../lancamentos/linha_conta.dart';
 import '../lancamentos/pendentes_secao.dart';
 
 /// "Contas do mês": faturas e contas fixas que vencem no mês — pago × falta
@@ -105,46 +106,23 @@ class _Linha extends ConsumerWidget {
             ? cores.negativo
             : tema.colorScheme.onSurfaceVariant;
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      dense: true,
+    return LinhaConta(
       leading: Icon(
         conta.paga ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
         color: cor,
       ),
-      title: Text(conta.descricao,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            decoration: conta.paga ? TextDecoration.lineThrough : null,
-            decorationColor: tema.colorScheme.onSurfaceVariant,
-          )),
-      subtitle: Text(
-        conta.paga
-            ? 'Paga · venc. ${FormatoData.dia(conta.vencimento)}'
-            : atrasada
-                ? 'Atrasada · venceu ${FormatoData.dia(conta.vencimento)}'
-                : 'Vence ${FormatoData.dia(conta.vencimento)}',
-        style: TextStyle(color: atrasada ? cores.negativo : null),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ValorMonetario(conta.valor,
-              estilo: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-          if (!conta.paga && conta.podePagar) ...[
-            const SizedBox(width: 8),
-            FilledButton.tonal(
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 34),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              onPressed: () => _pagar(context, ref),
-              child: const Text('Pagar'),
-            ),
-          ],
-        ],
-      ),
+      titulo: conta.descricao,
+      riscado: conta.paga,
+      subtitulo: conta.paga
+          ? 'Paga · venc. ${FormatoData.dia(conta.vencimento)}'
+          : atrasada
+              ? 'Atrasada · venceu ${FormatoData.dia(conta.vencimento)}'
+              : 'Vence ${FormatoData.dia(conta.vencimento)}',
+      corSubtitulo: atrasada ? cores.negativo : null,
+      valor: ValorMonetario(conta.valor,
+          estilo: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+      acao: !conta.paga && conta.podePagar ? 'Pagar' : null,
+      onAcao: () => _pagar(context, ref),
     );
   }
 

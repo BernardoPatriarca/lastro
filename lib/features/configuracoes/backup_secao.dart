@@ -61,22 +61,31 @@ class LembreteBackup extends ConsumerWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: tema.colorScheme.error.withValues(alpha: 0.4)),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.cloud_off_rounded, color: tema.colorScheme.error),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                ultimo == null
-                    ? 'Você ainda não fez backup. Seus dados só existem neste celular.'
-                    : 'Seu último backup foi em ${FormatoData.dia(ultimo)}. '
-                        'Faça um novo para não perder nada.',
-                style: tema.textTheme.bodyMedium,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.cloud_off_rounded, color: tema.colorScheme.error),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    ultimo == null
+                        ? 'Você ainda não fez backup. Seus dados só existem neste celular.'
+                        : 'Seu último backup foi em ${FormatoData.dia(ultimo)}. '
+                            'Faça um novo para não perder nada.',
+                    style: tema.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () => exportarBackup(context, ref),
-              child: const Text('Fazer agora'),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => exportarBackup(context, ref),
+                child: const Text('Fazer agora'),
+              ),
             ),
           ],
         ),

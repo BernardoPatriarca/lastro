@@ -33,6 +33,12 @@ class MaisPage extends StatelessWidget {
             onTap: () => context.push(Rotas.orcamento),
           ),
           _Item(
+            icone: Icons.bar_chart_rounded,
+            titulo: 'Relatórios',
+            subtitulo: 'Evolução, comparativos, médias e fixos × variáveis',
+            onTap: () => context.push(Rotas.relatorios),
+          ),
+          _Item(
             icone: Icons.upload_file_rounded,
             titulo: 'Importar extrato',
             subtitulo: 'OFX ou CSV do banco, com revisão antes de lançar',

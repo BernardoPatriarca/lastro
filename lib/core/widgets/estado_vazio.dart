@@ -23,7 +23,8 @@ class EstadoVazio extends StatelessWidget {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
+        child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -62,6 +63,7 @@ class EstadoVazio extends StatelessWidget {
               ),
             ],
           ],
+        ),
         ),
       ),
     );

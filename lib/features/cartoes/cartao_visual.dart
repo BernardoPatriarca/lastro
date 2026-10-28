@@ -100,14 +100,16 @@ class CartaoVisual extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _Duplo('Usado', resumo.usado, suave),
-                        _Duplo(
-                          'Disponível',
-                          resumo.disponivel,
-                          suave,
-                          alinhaDireita: true,
+                        Expanded(child: _Duplo('Usado', resumo.usado, suave)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _Duplo(
+                            'Disponível',
+                            resumo.disponivel,
+                            suave,
+                            alinhaDireita: true,
+                          ),
                         ),
                       ],
                     ),
@@ -137,12 +139,16 @@ class _Duplo extends StatelessWidget {
           : CrossAxisAlignment.start,
       children: [
         Text(rotulo, style: TextStyle(color: cor, fontSize: 11)),
-        ValorMonetario(
-          valor,
-          estilo: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: alinhaDireita ? Alignment.centerRight : Alignment.centerLeft,
+          child: ValorMonetario(
+            valor,
+            estilo: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],

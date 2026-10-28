@@ -11,6 +11,7 @@ import '../domain/fatura.dart';
 import '../domain/investimentos.dart';
 import '../domain/notificacoes.dart';
 import '../domain/orcamento.dart';
+import '../domain/relatorios.dart';
 import '../domain/resumo_mes.dart';
 import '../domain/saldo.dart';
 import 'banco.dart';
@@ -706,3 +707,20 @@ final alertasProvider = Provider<List<Alerta>>((ref) {
     backupAtrasado: backupAtrasado,
   );
 });
+
+// ---------------------------------------------------------------------------
+// Relatórios (V3)
+// ---------------------------------------------------------------------------
+
+/// Lançamentos na forma que os relatórios usam. "Fixo" = paga um compromisso
+/// ou é parcela de compra parcelada no cartão.
+final lancamentosRelatorioProvider = Provider<List<LancRelatorio>>((ref) => [
+      for (final l in ref.watch(lancamentosProvider).ou)
+        LancRelatorio(
+          data: l.data,
+          tipo: l.tipo,
+          valor: l.valor,
+          categoriaId: l.categoriaId,
+          fixo: l.ocorrenciaCompromissoId != null || l.compraParceladaId != null,
+        ),
+    ]);

@@ -130,8 +130,11 @@ class ProjecaoCard extends ConsumerWidget {
                 children: [
                   Icon(Icons.show_chart_rounded, color: tema.colorScheme.secondary),
                   const SizedBox(width: 8),
-                  Text('Projeção do mês',
-                      style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                  Flexible(
+                    child: Text('Projeção do mês',
+                        overflow: TextOverflow.ellipsis,
+                        style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),

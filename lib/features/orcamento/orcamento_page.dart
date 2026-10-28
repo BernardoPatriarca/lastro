@@ -126,12 +126,18 @@ class _LinhaCategoria extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(nome,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
                     ),
                     if (!linha.temLimite)
-                      Text(linha.gasto > 0 ? Moeda.formatar(linha.gasto) : 'Definir limite',
-                          style: tema.textTheme.labelLarge?.copyWith(
-                              color: tema.colorScheme.onSurfaceVariant)),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 110),
+                        child: Text(linha.gasto > 0 ? Moeda.formatar(linha.gasto) : 'Definir limite',
+                            overflow: TextOverflow.ellipsis,
+                            style: tema.textTheme.labelLarge?.copyWith(
+                                color: tema.colorScheme.onSurfaceVariant)),
+                      ),
                   ],
                 ),
                 if (linha.temLimite) ...[

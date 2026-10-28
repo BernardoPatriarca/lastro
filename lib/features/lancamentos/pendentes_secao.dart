@@ -12,6 +12,7 @@ import '../../data/servicos/servico_cartao.dart';
 import '../../data/servicos/servicos.dart';
 import '../../domain/datas.dart';
 import 'lancamento_acoes.dart';
+import 'linha_conta.dart';
 
 /// "Pendentes": receitas previstas a confirmar e contas fixas a pagar, com
 /// ação de um toque (tocar na linha permite ajustar valor e conta). Mostra as
@@ -99,31 +100,19 @@ class _LinhaOcorrencia extends ConsumerWidget {
         ? ''
         : ' (${ocorrencia.numeroParcela}/${c.numeroParcelas})';
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    return LinhaConta(
       leading: Icon(Icons.receipt_long_rounded,
           color: atrasada ? context.coresLastro.negativo : tema.colorScheme.onSurfaceVariant),
-      title: Text('${c.descricao}$sufixo', maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        atrasada
-            ? 'Venceu ${FormatoData.dia(ocorrencia.dataVencimento).substring(0, 5)} · $dias ${dias == 1 ? 'dia' : 'dias'} de atraso'
-            : 'Vence ${FormatoData.dia(ocorrencia.dataVencimento)}',
-        style: TextStyle(color: atrasada ? context.coresLastro.negativo : null),
-      ),
+      titulo: '${c.descricao}$sufixo',
+      subtitulo: atrasada
+          ? 'Venceu ${FormatoData.dia(ocorrencia.dataVencimento).substring(0, 5)} · $dias ${dias == 1 ? 'dia' : 'dias'} de atraso'
+          : 'Vence ${FormatoData.dia(ocorrencia.dataVencimento)}',
+      corSubtitulo: atrasada ? context.coresLastro.negativo : null,
+      valor: ValorMonetario(ocorrencia.valor,
+          estilo: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+      acao: 'Pagar',
+      onAcao: () => _pagar(context, ref, c, ajustar: false),
       onTap: () => _pagar(context, ref, c, ajustar: true),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ValorMonetario(ocorrencia.valor,
-              estilo: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(width: 8),
-          FilledButton.tonal(
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 14)),
-            onPressed: () => _pagar(context, ref, c, ajustar: false),
-            child: const Text('Pagar'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -162,26 +151,16 @@ class _LinhaReceita extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tema = Theme.of(context);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    return LinhaConta(
       leading: Icon(Icons.south_west_rounded, color: context.coresLastro.positivo),
-      title: Text(receita.descricao, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text('Prevista para o dia ${receita.diaPrevisto}'),
+      titulo: receita.descricao,
+      subtitulo: 'Prevista para o dia ${receita.diaPrevisto}',
+      valor: ValorMonetario(receita.valorPrevisto,
+          colorirPorSinal: true,
+          estilo: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+      acao: 'Receber',
+      onAcao: () => _confirmar(context, ref, ajustar: false),
       onTap: () => _confirmar(context, ref, ajustar: true),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ValorMonetario(receita.valorPrevisto,
-              colorirPorSinal: true,
-              estilo: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(width: 8),
-          FilledButton.tonal(
-            style: FilledButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 14)),
-            onPressed: () => _confirmar(context, ref, ajustar: false),
-            child: const Text('Receber'),
-          ),
-        ],
-      ),
     );
   }
 

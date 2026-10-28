@@ -513,14 +513,16 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                               opacity: _compra != null ? 0.5 : 1,
                               child: _Secao(
                             'Data',
-                            child: Row(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 ActionChip(
                                   avatar: const Icon(Icons.event_rounded, size: 18),
                                   label: Text(FormatoData.dia(_data)),
                                   onPressed: _escolherData,
                                 ),
-                                const SizedBox(width: 8),
                                 ChoiceChip(
                                   label: const Text('Hoje'),
                                   selected: mesmoDia(_data, DateTime.now()),
@@ -528,7 +530,6 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                                   onSelected: (_) => setState(
                                       () => _data = soData(DateTime.now())),
                                 ),
-                                const SizedBox(width: 8),
                                 ChoiceChip(
                                   label: const Text('Ontem'),
                                   selected: mesmoDia(

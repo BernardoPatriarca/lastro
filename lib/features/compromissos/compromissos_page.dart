@@ -274,11 +274,24 @@ class _CartaoCompromisso extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(c.descricao,
+                          overflow: TextOverflow.ellipsis,
                           style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                     ),
-                    ValorMonetario(c.valor,
-                        estilo: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                    Text(' /mês', style: tema.textTheme.bodySmall),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 150),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ValorMonetario(c.valor,
+                                estilo: tema.textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700)),
+                            Text(' /mês', style: tema.textTheme.bodySmall),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -313,8 +326,14 @@ class _CartaoCompromisso extends ConsumerWidget {
                         child: Text('Restante: ${Moeda.formatar(restante!)}',
                             style: tema.textTheme.bodySmall),
                       ),
-                      Text('Termina em ${FormatoData.mesAno(dataDeTermino(c.dataInicio, c.numeroParcelas!))}',
-                          style: tema.textTheme.bodySmall),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Termina em ${FormatoData.mesAno(dataDeTermino(c.dataInicio, c.numeroParcelas!))}',
+                          overflow: TextOverflow.ellipsis,
+                          style: tema.textTheme.bodySmall,
+                        ),
+                      ),
                     ],
                   ),
                 ],

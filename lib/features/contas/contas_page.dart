@@ -129,11 +129,22 @@ class _CartaoConta extends ConsumerWidget {
                     ],
                   ),
                 ),
-                ValorMonetario(
-                  saldo,
-                  colorirPorSinal: saldo < 0,
-                  estilo: tema.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                const SizedBox(width: 6),
+                Flexible(
+                  flex: 0,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 120),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: ValorMonetario(
+                        saldo,
+                        colorirPorSinal: saldo < 0,
+                        estilo: tema.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
                 ),
                 PopupMenuButton<String>(
                   onSelected: (acao) {

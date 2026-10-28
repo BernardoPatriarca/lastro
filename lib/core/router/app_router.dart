@@ -15,6 +15,7 @@ import '../../features/contas/conta_form_page.dart';
 import '../../features/contas/contas_page.dart';
 import '../../features/importacao/importar_page.dart';
 import '../../features/orcamento/orcamento_page.dart';
+import '../../features/relatorios/relatorios_page.dart';
 import '../../features/investimentos/investimento_detalhe_page.dart';
 import '../../features/investimentos/investimento_form_page.dart';
 import '../../features/investimentos/meta_form_page.dart';
@@ -50,6 +51,7 @@ abstract final class Rotas {
   static const categorias = '/mais/categorias';
   static const regras = '/mais/categorias/regras';
   static const orcamento = '/mais/orcamento';
+  static const relatorios = '/mais/relatorios';
   static const importar = '/mais/importar';
   static const importarMapear = '/mais/importar/mapear';
   static const importarRevisar = '/mais/importar/revisar';
@@ -308,6 +310,7 @@ GoRouter criarRouter({
                   ],
                 ),
                 GoRoute(path: 'orcamento', builder: (_, _) => const OrcamentoPage()),
+                GoRoute(path: 'relatorios', builder: (_, _) => const RelatoriosPage()),
                 GoRoute(
                   path: 'importar',
                   builder: (_, _) => const ImportarPage(),
