@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_router.dart';
 import '../../data/servicos/servicos.dart';
+import '../notificacoes/sincronizador.dart';
 
 /// Casca com a barra inferior (Início · Lançamentos · Cartões ·
 /// Investimentos · Mais) e o botão flutuante "+" de lançamento rápido.
@@ -32,6 +33,8 @@ class _ShellPageState extends ConsumerState<ShellPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Mantém os avisos de vencimento agendados em dia.
+    ref.watch(sincronizadorNotificacoesProvider);
     final emMais = navigationShell.currentIndex == _indiceMais;
     return Scaffold(
       body: navigationShell,

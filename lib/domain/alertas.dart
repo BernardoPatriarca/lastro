@@ -25,11 +25,16 @@ class VencimentoAlerta {
     required this.vencimento,
     required this.valor,
     this.ehFatura = false,
+    this.chave = '',
   });
   final String descricao;
   final DateTime vencimento;
   final int valor;
   final bool ehFatura;
+
+  /// Identificador estável (ex.: `f12` fatura 12, `o34` ocorrência 34), usado
+  /// para dar um id fixo à notificação agendada.
+  final String chave;
 }
 
 /// Uma categoria com orçamento no limite ou acima, para os alertas.

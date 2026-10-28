@@ -12,6 +12,8 @@ const configuracoesPadrao = <String, String>{
   'ocultar_valores': 'false',
   'bloqueio_minutos': '2',
   'biometria': 'false',
+  'notificacoes': 'false',
+  'notificacoes_dias': '1',
 };
 
 class _Seed {

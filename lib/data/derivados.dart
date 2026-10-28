@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/formatadores/moeda.dart';
 import '../core/widgets/seletor_mes.dart';
 import '../domain/alertas.dart';
 import '../domain/competencia.dart';
@@ -8,6 +9,7 @@ import '../domain/credito_seguro.dart';
 import '../domain/enums.dart';
 import '../domain/fatura.dart';
 import '../domain/investimentos.dart';
+import '../domain/notificacoes.dart';
 import '../domain/orcamento.dart';
 import '../domain/resumo_mes.dart';
 import '../domain/saldo.dart';
@@ -611,16 +613,12 @@ final topCategoriasProvider = Provider<List<TopCategoria>>((ref) {
   ].take(5).toList();
 });
 
-/// Alertas do momento (crédito, vencimentos, orçamento do mês atual, metas
-/// atrasadas e backup).
-final alertasProvider = Provider<List<Alerta>>((ref) {
-  final hoje = DateTime.now();
-  final categorias = ref.watch(categoriasPorIdProvider);
+/// Faturas não pagas e contas fixas pendentes, como vencimentos (base dos
+/// alertas e das notificações).
+final vencimentosPendentesProvider = Provider<List<VencimentoAlerta>>((ref) {
   final cartoes = ref.watch(cartoesPorIdProvider);
   final compromissos = ref.watch(compromissosPorIdProvider);
   final totais = ref.watch(totaisFaturasProvider);
-  final ajustes = ref.watch(ajustesProvider);
-
   final vencimentos = <VencimentoAlerta>[];
   for (final f in ref.watch(faturasProvider).ou) {
     final total = totais[f.id] ?? 0;
@@ -630,17 +628,43 @@ final alertasProvider = Provider<List<Alerta>>((ref) {
       vencimento: f.dataVencimento,
       valor: total,
       ehFatura: true,
+      chave: 'f${f.id}',
     ));
   }
   for (final o in ref.watch(ocorrenciasProvider).ou) {
     final c = compromissos[o.compromissoId];
     if (o.status != StatusOcorrencia.pendente || c == null || !c.ativo) continue;
     vencimentos.add(VencimentoAlerta(
-      descricao: c.descricao,
+      descricao: o.numeroParcela == null
+          ? c.descricao
+          : '${c.descricao} (${o.numeroParcela}/${c.numeroParcelas})',
       vencimento: o.dataVencimento,
       valor: o.valor,
+      chave: 'o${o.id}',
     ));
   }
+  return vencimentos;
+});
+
+/// Avisos de vencimento planejados (vazio com as notificações desligadas).
+final notificacoesPlanejadasProvider = Provider<List<NotificacaoPlanejada>>((ref) {
+  final ajustes = ref.watch(ajustesProvider);
+  if (!ajustes.notificacoes) return const [];
+  return planejarNotificacoes(
+    agora: DateTime.now(),
+    vencimentos: ref.watch(vencimentosPendentesProvider),
+    diasAntes: ajustes.notificacoesDias,
+    formatarValor: Moeda.formatar,
+  );
+});
+
+/// Alertas do momento (crédito, vencimentos, orçamento do mês atual, metas
+/// atrasadas e backup).
+final alertasProvider = Provider<List<Alerta>>((ref) {
+  final hoje = DateTime.now();
+  final categorias = ref.watch(categoriasPorIdProvider);
+  final ajustes = ref.watch(ajustesProvider);
+  final vencimentos = ref.watch(vencimentosPendentesProvider);
 
   // Orçamento do mês ATUAL (independe do mês que está na tela).
   final mesAtual = Competencia.deData(hoje);

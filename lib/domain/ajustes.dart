@@ -11,6 +11,8 @@ class AjustesApp {
     this.bloqueioMinutos = 2,
     this.biometria = false,
     this.ultimoBackup,
+    this.notificacoes = false,
+    this.notificacoesDias = 1,
   });
 
   factory AjustesApp.deMapa(Map<String, String> m) => AjustesApp(
@@ -25,6 +27,8 @@ class AjustesApp {
         bloqueioMinutos: int.tryParse(m['bloqueio_minutos'] ?? '') ?? 2,
         biometria: (m['biometria'] ?? 'false') == 'true',
         ultimoBackup: DateTime.tryParse(m['ultimo_backup'] ?? ''),
+        notificacoes: (m['notificacoes'] ?? 'false') == 'true',
+        notificacoesDias: int.tryParse(m['notificacoes_dias'] ?? '') ?? 1,
       );
 
   /// `dark`, `light` ou `system`.
@@ -39,6 +43,12 @@ class AjustesApp {
   final bool biometria;
   final DateTime? ultimoBackup;
 
+  /// Avisos de vencimento de faturas e contas fixas.
+  final bool notificacoes;
+
+  /// Quantos dias antes do vencimento avisar (0 = no dia).
+  final int notificacoesDias;
+
   @override
   bool operator ==(Object other) =>
       other is AjustesApp &&
@@ -49,9 +59,12 @@ class AjustesApp {
       other.ocultarValores == ocultarValores &&
       other.bloqueioMinutos == bloqueioMinutos &&
       other.biometria == biometria &&
-      other.ultimoBackup == ultimoBackup;
+      other.ultimoBackup == ultimoBackup &&
+      other.notificacoes == notificacoes &&
+      other.notificacoesDias == notificacoesDias;
 
   @override
   int get hashCode => Object.hash(tema, modoParcelados, descontarFixos,
-      comportamentoEstouro, ocultarValores, bloqueioMinutos, biometria, ultimoBackup);
+      comportamentoEstouro, ocultarValores, bloqueioMinutos, biometria, ultimoBackup,
+      notificacoes, notificacoesDias);
 }

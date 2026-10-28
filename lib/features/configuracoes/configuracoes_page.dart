@@ -7,6 +7,7 @@ import '../../data/manutencao.dart';
 import '../../data/providers.dart';
 import '../../domain/enums.dart';
 import '../login/auth_controller.dart';
+import '../notificacoes/sincronizador.dart';
 import 'backup_secao.dart';
 import '../lancamentos/lancamento_acoes.dart';
 
@@ -125,6 +126,38 @@ class ConfiguracoesPage extends ConsumerWidget {
                   title: const Text('Ocultar valores'),
                   subtitle: const Text('Mostra R\$ ••• no lugar dos valores.'),
                 ),
+              ],
+            ),
+          ),
+          const _Secao('Notificações'),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  value: a.notificacoes,
+                  onChanged: (v) => _alternarNotificacoes(context, ref, v),
+                  secondary: const Icon(Icons.notifications_active_outlined),
+                  title: const Text('Avisar vencimentos'),
+                  subtitle: const Text(
+                    'Faturas de cartão e contas fixas, às 9h do dia do aviso.',
+                  ),
+                ),
+                if (a.notificacoes)
+                  ListTile(
+                    leading: const Icon(Icons.event_available_outlined),
+                    title: const Text('Avisar com antecedência de'),
+                    trailing: DropdownButton<int>(
+                      value: const [0, 1, 2, 3].contains(a.notificacoesDias) ? a.notificacoesDias : 1,
+                      underline: const SizedBox.shrink(),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text('No dia')),
+                        DropdownMenuItem(value: 1, child: Text('1 dia')),
+                        DropdownMenuItem(value: 2, child: Text('2 dias')),
+                        DropdownMenuItem(value: 3, child: Text('3 dias')),
+                      ],
+                      onChanged: (v) => definir('notificacoes_dias', '$v'),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -250,6 +283,22 @@ class ConfiguracoesPage extends ConsumerWidget {
     if (ok != true) return;
     await apagarTodosOsDados(ref.read(bancoProvider));
     if (context.mounted) mostrarAviso(context, 'Dados apagados');
+  }
+
+  Future<void> _alternarNotificacoes(BuildContext context, WidgetRef ref, bool ligar) async {
+    final definir = ref.read(definirAjusteProvider);
+    if (!ligar) {
+      await definir('notificacoes', 'false');
+      return;
+    }
+    final ok = await ref.read(agendadorProvider).pedirPermissao();
+    if (!ok) {
+      if (context.mounted) {
+        mostrarAviso(context, 'Sem permissão de notificações. Libere nas configurações do celular.');
+      }
+      return;
+    }
+    await definir('notificacoes', 'true');
   }
 
   Future<void> _alternarBiometria(BuildContext context, WidgetRef ref, bool ligar) async {
