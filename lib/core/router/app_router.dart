@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/cartoes/cartao_detalhe_page.dart';
 import '../../features/cartoes/cartao_form_page.dart';
+import '../../features/categorias/categoria_form_page.dart';
+import '../../features/categorias/categorias_page.dart';
+import '../../features/categorias/regras_page.dart';
 import '../../features/compromissos/compromisso_form_page.dart';
 import '../../features/compromissos/compromissos_page.dart';
 import '../../features/compromissos/receita_form_page.dart';
@@ -37,6 +40,8 @@ abstract final class Rotas {
   static const contas = '/mais/contas';
   static const compromissos = '/mais/compromissos';
   static const configuracoes = '/mais/configuracoes';
+  static const categorias = '/mais/categorias';
+  static const regras = '/mais/categorias/regras';
 
   // Formulários em tela cheia (por cima da barra inferior).
   static const novoLancamento = '/lancamento/novo';
@@ -48,6 +53,8 @@ abstract final class Rotas {
   static String editarCompromisso(int id) => '/compromisso/$id';
   static const novaReceita = '/receita/nova';
   static String editarReceita(int id) => '/receita/$id';
+  static const novaCategoria = '/categoria/nova';
+  static String editarCategoria(int id) => '/categoria/$id';
   static const novaConta = '/conta/nova';
   static String editarConta(int id) => '/conta/$id';
 }
@@ -165,6 +172,22 @@ GoRouter criarRouter({
         ),
       ),
       GoRoute(
+        path: Rotas.novaCategoria,
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(
+          state,
+          CategoriaFormPage(tipoInicial: state.uri.queryParameters['tipo']),
+        ),
+      ),
+      GoRoute(
+        path: '/categoria/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, state) => paginaModal(
+          state,
+          CategoriaFormPage(id: int.parse(state.pathParameters['id']!)),
+        ),
+      ),
+      GoRoute(
         path: Rotas.novaConta,
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (_, state) => paginaModal(state, const ContaFormPage()),
@@ -216,6 +239,13 @@ GoRouter criarRouter({
               builder: (_, _) => const MaisPage(),
               routes: [
                 GoRoute(path: 'contas', builder: (_, _) => const ContasPage()),
+                GoRoute(
+                  path: 'categorias',
+                  builder: (_, _) => const CategoriasPage(),
+                  routes: [
+                    GoRoute(path: 'regras', builder: (_, _) => const RegrasPage()),
+                  ],
+                ),
                 GoRoute(
                   path: 'configuracoes',
                   builder: (_, _) => const ConfiguracoesPage(),

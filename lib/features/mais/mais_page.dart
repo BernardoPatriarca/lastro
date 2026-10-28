@@ -27,6 +27,12 @@ class MaisPage extends StatelessWidget {
             onTap: () => context.push(Rotas.compromissos),
           ),
           _Item(
+            icone: Icons.category_rounded,
+            titulo: 'Categorias',
+            subtitulo: 'Categorias, subcategorias e regras de categorização',
+            onTap: () => context.push(Rotas.categorias),
+          ),
+          _Item(
             icone: Icons.settings_rounded,
             titulo: 'Configurações',
             subtitulo: 'Crédito seguro, tema, segurança e privacidade',
