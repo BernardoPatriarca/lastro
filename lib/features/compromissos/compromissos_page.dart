@@ -296,9 +296,12 @@ class _CartaoCompromisso extends ConsumerWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  parcelado
-                      ? 'Parcelado · vence dia ${c.diaVencimento}'
-                      : 'Recorrente, sem fim · vence dia ${c.diaVencimento}',
+                  c.formaPagamento == FormaPagamento.credito
+                      ? 'No cartão ${ref.watch(cartoesPorIdProvider)[c.cartaoId]?.nome ?? ''} · '
+                          'cobra todo dia ${c.diaVencimento}'
+                      : parcelado
+                          ? 'Parcelado · vence dia ${c.diaVencimento}'
+                          : 'Recorrente, sem fim · vence dia ${c.diaVencimento}',
                   style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
                 ),
                 if (parcelado) ...[

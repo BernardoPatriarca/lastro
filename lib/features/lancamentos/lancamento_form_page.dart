@@ -80,6 +80,9 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
 
   bool get _credito => _aba == _Aba.gasto && _forma == FormaPagamento.credito;
 
+  /// Gasto fixo no crédito é uma cobrança por mês (1 parcela por vez).
+  int get _parcelasEfetivas => _fixo ? 1 : _parcelas;
+
   /// Editando uma compra no crédito: a forma de pagamento não muda.
   bool get _editandoCredito =>
       _original?.formaPagamento == FormaPagamento.credito;
@@ -256,7 +259,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                   _tipo == TipoLancamento.transferencia ? _contaDestinoId : null,
                 ),
               ));
-      } else if (_fixo && _aba == _Aba.gasto && !_credito) {
+      } else if (_fixo && _aba == _Aba.gasto) {
         final categorias = ref.read(categoriasPorIdProvider);
         final texto = _descricao.text.trim();
         await ref.read(servicoCompromissoProvider).criarCompromisso(
@@ -264,16 +267,22 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                   ? texto
                   : (categorias[_categoriaId]?.nome ?? 'Gasto fixo'),
               valor: _valor.centavos,
-              tipo: _tipoFixo,
+              tipo: _credito ? TipoCompromisso.recorrente : _tipoFixo,
               dataInicio: _data,
               numeroParcelas: _parcelasFixo,
               forma: _forma,
               categoriaId: _categoriaId,
-              contaId: contaId,
+              contaId: _credito ? null : contaId,
+              cartaoId: _credito ? cartaoId : null,
             );
         if (!mounted) return;
         context.pop();
-        mostrarAviso(context, 'Gasto fixo criado: aparece em Pendentes para você pagar.');
+        mostrarAviso(
+          context,
+          _credito
+              ? 'Gasto fixo criado: a cobrança entra na fatura do cartão todo mês.'
+              : 'Gasto fixo criado: aparece em Pendentes para você pagar.',
+        );
         return;
       } else if (_credito) {
         await cartaoServico.registrarCompra(
@@ -376,7 +385,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
       ref,
       cartao: cartao,
       valor: _valor.centavos,
-      parcelas: _parcelas,
+      parcelas: _parcelasEfetivas,
       data: _data,
     );
     if (!impacto.estoura) return true;
@@ -636,7 +645,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
           onChanged: parcelada ? null : (v) => setState(() => _cartaoId = v),
         ),
       ),
-      if (!_edicao) ...[
+      if (!_edicao && !_fixo) ...[
         const SizedBox(height: 20),
         _Secao(
           'Parcelas',
@@ -655,7 +664,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
               PreviaCompra(
                 cartao: cartao,
                 valorTotal: _valor.centavos,
-                parcelas: _edicao ? 1 : _parcelas,
+                parcelas: _edicao ? 1 : _parcelasEfetivas,
                 data: _data,
               ),
               // O impacto vale para compras novas (já lançadas contam no saldo).
@@ -664,7 +673,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
                 ImpactoCredito(
                   cartao: cartao,
                   valor: _valor.centavos,
-                  parcelas: _parcelas,
+                  parcelas: _parcelasEfetivas,
                   data: _data,
                 ),
               ],
@@ -754,7 +763,7 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
       if (!_edicao &&
           (_tipo == TipoLancamento.aporte || _tipo == TipoLancamento.resgate))
         ..._campoInvestimento(),
-      if (!_edicao && _aba == _Aba.gasto && !_credito) ..._camposFixo(),
+      if (!_edicao && _aba == _Aba.gasto) ..._camposFixo(),
       if (!_edicao && _aba == _Aba.ganho)
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -794,8 +803,9 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
     ];
   }
 
-  /// "Gasto fixo": em vez de lançar agora, cria um compromisso (recorrente ou
-  /// parcelado) que gera uma conta pendente por mês.
+  /// "Gasto fixo": em vez de lançar agora, cria um compromisso. Fora do crédito
+  /// (recorrente ou parcelado) gera uma conta pendente por mês; **no crédito**
+  /// a cobrança entra sozinha na fatura do cartão todo mês.
   List<Widget> _camposFixo() => [
         const SizedBox(height: 8),
         SwitchListTile(
@@ -803,11 +813,26 @@ class _LancamentoFormPageState extends ConsumerState<LancamentoFormPage> {
           value: _fixo,
           onChanged: (v) => setState(() => _fixo = v),
           title: const Text('Gasto fixo'),
-          subtitle: const Text(
-            'Aluguel, internet, financiamento… aparece em Pendentes todo mês.',
+          subtitle: Text(
+            _credito
+                ? 'Assinaturas e cobranças que caem todo mês no cartão: entram '
+                    'sozinhas na fatura.'
+                : 'Aluguel, internet, financiamento… aparece em Pendentes todo mês.',
           ),
         ),
-        if (_fixo) ...[
+        if (_fixo && _credito)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'O valor acima é o de cada mês e a cobrança é sem fim (para parcelar, '
+              'desligue o gasto fixo e use as parcelas). A data escolhida é a '
+              'primeira cobrança (depois, todo dia ${_data.day}).',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+        if (_fixo && !_credito) ...[
           const SizedBox(height: 4),
           SegmentedButton<TipoCompromisso>(
             showSelectedIcon: false,

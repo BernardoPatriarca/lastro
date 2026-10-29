@@ -18,7 +18,7 @@ void main() {
     expect((await db.select(db.contas).get()).length, 2);
     expect((await db.select(db.cartoes).get()).length, 1);
     expect((await db.lancamentosDao.todos()).length, greaterThan(30));
-    expect((await db.compromissosDao.todosCompromissos()).length, 3);
+    expect((await db.compromissosDao.todosCompromissos()).length, 4);
 
     final c = ProviderContainer(overrides: [bancoProvider.overrideWithValue(db)]);
     addTearDown(c.dispose);

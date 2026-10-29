@@ -4087,6 +4087,20 @@ class $CompromissosTable extends Compromissos
       'REFERENCES contas (id)',
     ),
   );
+  static const VerificationMeta _cartaoIdMeta = const VerificationMeta(
+    'cartaoId',
+  );
+  @override
+  late final GeneratedColumn<int> cartaoId = GeneratedColumn<int>(
+    'cartao_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES cartoes (id)',
+    ),
+  );
   static const VerificationMeta _valorMeta = const VerificationMeta('valor');
   @override
   late final GeneratedColumn<int> valor = GeneratedColumn<int>(
@@ -4156,6 +4170,7 @@ class $CompromissosTable extends Compromissos
     categoriaId,
     formaPagamento,
     contaId,
+    cartaoId,
     valor,
     diaVencimento,
     dataInicio,
@@ -4199,6 +4214,12 @@ class $CompromissosTable extends Compromissos
       context.handle(
         _contaIdMeta,
         contaId.isAcceptableOrUnknown(data['conta_id']!, _contaIdMeta),
+      );
+    }
+    if (data.containsKey('cartao_id')) {
+      context.handle(
+        _cartaoIdMeta,
+        cartaoId.isAcceptableOrUnknown(data['cartao_id']!, _cartaoIdMeta),
       );
     }
     if (data.containsKey('valor')) {
@@ -4266,6 +4287,10 @@ class $CompromissosTable extends Compromissos
         DriftSqlType.int,
         data['${effectivePrefix}conta_id'],
       ),
+      cartaoId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cartao_id'],
+      ),
       valor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}valor'],
@@ -4318,6 +4343,9 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
   final int? categoriaId;
   final FormaPagamento formaPagamento;
   final int? contaId;
+
+  /// Gasto fixo **no crédito**: cartão em que a cobrança cai todo mês.
+  final int? cartaoId;
   final int valor;
   final int diaVencimento;
   final DateTime dataInicio;
@@ -4330,6 +4358,7 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
     this.categoriaId,
     required this.formaPagamento,
     this.contaId,
+    this.cartaoId,
     required this.valor,
     required this.diaVencimento,
     required this.dataInicio,
@@ -4352,6 +4381,9 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
     }
     if (!nullToAbsent || contaId != null) {
       map['conta_id'] = Variable<int>(contaId);
+    }
+    if (!nullToAbsent || cartaoId != null) {
+      map['cartao_id'] = Variable<int>(cartaoId);
     }
     map['valor'] = Variable<int>(valor);
     map['dia_vencimento'] = Variable<int>(diaVencimento);
@@ -4383,6 +4415,9 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
       contaId: contaId == null && nullToAbsent
           ? const Value.absent()
           : Value(contaId),
+      cartaoId: cartaoId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cartaoId),
       valor: Value(valor),
       diaVencimento: Value(diaVencimento),
       dataInicio: Value(dataInicio),
@@ -4407,6 +4442,7 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
         serializer.fromJson<String>(json['formaPagamento']),
       ),
       contaId: serializer.fromJson<int?>(json['contaId']),
+      cartaoId: serializer.fromJson<int?>(json['cartaoId']),
       valor: serializer.fromJson<int>(json['valor']),
       diaVencimento: serializer.fromJson<int>(json['diaVencimento']),
       dataInicio: serializer.fromJson<DateTime>(json['dataInicio']),
@@ -4428,6 +4464,7 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
         $CompromissosTable.$converterformaPagamento.toJson(formaPagamento),
       ),
       'contaId': serializer.toJson<int?>(contaId),
+      'cartaoId': serializer.toJson<int?>(cartaoId),
       'valor': serializer.toJson<int>(valor),
       'diaVencimento': serializer.toJson<int>(diaVencimento),
       'dataInicio': serializer.toJson<DateTime>(dataInicio),
@@ -4445,6 +4482,7 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
     Value<int?> categoriaId = const Value.absent(),
     FormaPagamento? formaPagamento,
     Value<int?> contaId = const Value.absent(),
+    Value<int?> cartaoId = const Value.absent(),
     int? valor,
     int? diaVencimento,
     DateTime? dataInicio,
@@ -4457,6 +4495,7 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
     categoriaId: categoriaId.present ? categoriaId.value : this.categoriaId,
     formaPagamento: formaPagamento ?? this.formaPagamento,
     contaId: contaId.present ? contaId.value : this.contaId,
+    cartaoId: cartaoId.present ? cartaoId.value : this.cartaoId,
     valor: valor ?? this.valor,
     diaVencimento: diaVencimento ?? this.diaVencimento,
     dataInicio: dataInicio ?? this.dataInicio,
@@ -4477,6 +4516,7 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
           ? data.formaPagamento.value
           : this.formaPagamento,
       contaId: data.contaId.present ? data.contaId.value : this.contaId,
+      cartaoId: data.cartaoId.present ? data.cartaoId.value : this.cartaoId,
       valor: data.valor.present ? data.valor.value : this.valor,
       diaVencimento: data.diaVencimento.present
           ? data.diaVencimento.value
@@ -4500,6 +4540,7 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
           ..write('categoriaId: $categoriaId, ')
           ..write('formaPagamento: $formaPagamento, ')
           ..write('contaId: $contaId, ')
+          ..write('cartaoId: $cartaoId, ')
           ..write('valor: $valor, ')
           ..write('diaVencimento: $diaVencimento, ')
           ..write('dataInicio: $dataInicio, ')
@@ -4517,6 +4558,7 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
     categoriaId,
     formaPagamento,
     contaId,
+    cartaoId,
     valor,
     diaVencimento,
     dataInicio,
@@ -4533,6 +4575,7 @@ class Compromisso extends DataClass implements Insertable<Compromisso> {
           other.categoriaId == this.categoriaId &&
           other.formaPagamento == this.formaPagamento &&
           other.contaId == this.contaId &&
+          other.cartaoId == this.cartaoId &&
           other.valor == this.valor &&
           other.diaVencimento == this.diaVencimento &&
           other.dataInicio == this.dataInicio &&
@@ -4547,6 +4590,7 @@ class CompromissosCompanion extends UpdateCompanion<Compromisso> {
   final Value<int?> categoriaId;
   final Value<FormaPagamento> formaPagamento;
   final Value<int?> contaId;
+  final Value<int?> cartaoId;
   final Value<int> valor;
   final Value<int> diaVencimento;
   final Value<DateTime> dataInicio;
@@ -4559,6 +4603,7 @@ class CompromissosCompanion extends UpdateCompanion<Compromisso> {
     this.categoriaId = const Value.absent(),
     this.formaPagamento = const Value.absent(),
     this.contaId = const Value.absent(),
+    this.cartaoId = const Value.absent(),
     this.valor = const Value.absent(),
     this.diaVencimento = const Value.absent(),
     this.dataInicio = const Value.absent(),
@@ -4572,6 +4617,7 @@ class CompromissosCompanion extends UpdateCompanion<Compromisso> {
     this.categoriaId = const Value.absent(),
     this.formaPagamento = const Value.absent(),
     this.contaId = const Value.absent(),
+    this.cartaoId = const Value.absent(),
     required int valor,
     required int diaVencimento,
     required DateTime dataInicio,
@@ -4589,6 +4635,7 @@ class CompromissosCompanion extends UpdateCompanion<Compromisso> {
     Expression<int>? categoriaId,
     Expression<String>? formaPagamento,
     Expression<int>? contaId,
+    Expression<int>? cartaoId,
     Expression<int>? valor,
     Expression<int>? diaVencimento,
     Expression<int>? dataInicio,
@@ -4602,6 +4649,7 @@ class CompromissosCompanion extends UpdateCompanion<Compromisso> {
       if (categoriaId != null) 'categoria_id': categoriaId,
       if (formaPagamento != null) 'forma_pagamento': formaPagamento,
       if (contaId != null) 'conta_id': contaId,
+      if (cartaoId != null) 'cartao_id': cartaoId,
       if (valor != null) 'valor': valor,
       if (diaVencimento != null) 'dia_vencimento': diaVencimento,
       if (dataInicio != null) 'data_inicio': dataInicio,
@@ -4617,6 +4665,7 @@ class CompromissosCompanion extends UpdateCompanion<Compromisso> {
     Value<int?>? categoriaId,
     Value<FormaPagamento>? formaPagamento,
     Value<int?>? contaId,
+    Value<int?>? cartaoId,
     Value<int>? valor,
     Value<int>? diaVencimento,
     Value<DateTime>? dataInicio,
@@ -4630,6 +4679,7 @@ class CompromissosCompanion extends UpdateCompanion<Compromisso> {
       categoriaId: categoriaId ?? this.categoriaId,
       formaPagamento: formaPagamento ?? this.formaPagamento,
       contaId: contaId ?? this.contaId,
+      cartaoId: cartaoId ?? this.cartaoId,
       valor: valor ?? this.valor,
       diaVencimento: diaVencimento ?? this.diaVencimento,
       dataInicio: dataInicio ?? this.dataInicio,
@@ -4658,6 +4708,9 @@ class CompromissosCompanion extends UpdateCompanion<Compromisso> {
     }
     if (contaId.present) {
       map['conta_id'] = Variable<int>(contaId.value);
+    }
+    if (cartaoId.present) {
+      map['cartao_id'] = Variable<int>(cartaoId.value);
     }
     if (valor.present) {
       map['valor'] = Variable<int>(valor.value);
@@ -4692,6 +4745,7 @@ class CompromissosCompanion extends UpdateCompanion<Compromisso> {
           ..write('categoriaId: $categoriaId, ')
           ..write('formaPagamento: $formaPagamento, ')
           ..write('contaId: $contaId, ')
+          ..write('cartaoId: $cartaoId, ')
           ..write('valor: $valor, ')
           ..write('diaVencimento: $diaVencimento, ')
           ..write('dataInicio: $dataInicio, ')
@@ -8979,6 +9033,24 @@ final class $$CartoesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$CompromissosTable, List<Compromisso>>
+  _compromissosRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.compromissos,
+    aliasName: 'cartoes__id__compromissos__cartao_id',
+  );
+
+  $$CompromissosTableProcessedTableManager get compromissosRefs {
+    final manager = $$CompromissosTableTableManager(
+      $_db,
+      $_db.compromissos,
+    ).filter((f) => f.cartaoId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_compromissosRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$CartoesTableFilterComposer
@@ -9114,6 +9186,31 @@ class $$CartoesTableFilterComposer
           }) => $$LancamentosTableFilterComposer(
             $db: $db,
             $table: $db.lancamentos,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> compromissosRefs(
+    Expression<bool> Function($$CompromissosTableFilterComposer f) f,
+  ) {
+    final $$CompromissosTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.compromissos,
+      getReferencedColumn: (t) => t.cartaoId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CompromissosTableFilterComposer(
+            $db: $db,
+            $table: $db.compromissos,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -9324,6 +9421,31 @@ class $$CartoesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> compromissosRefs<T extends Object>(
+    Expression<T> Function($$CompromissosTableAnnotationComposer a) f,
+  ) {
+    final $$CompromissosTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.compromissos,
+      getReferencedColumn: (t) => t.cartaoId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CompromissosTableAnnotationComposer(
+            $db: $db,
+            $table: $db.compromissos,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$CartoesTableTableManager
@@ -9344,6 +9466,7 @@ class $$CartoesTableTableManager
             bool faturasRefs,
             bool comprasParceladasRefs,
             bool lancamentosRefs,
+            bool compromissosRefs,
           })
         > {
   $$CartoesTableTableManager(_$AppDatabase db, $CartoesTable table)
@@ -9411,6 +9534,7 @@ class $$CartoesTableTableManager
                 faturasRefs = false,
                 comprasParceladasRefs = false,
                 lancamentosRefs = false,
+                compromissosRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -9418,6 +9542,7 @@ class $$CartoesTableTableManager
                     if (faturasRefs) db.faturas,
                     if (comprasParceladasRefs) db.comprasParceladas,
                     if (lancamentosRefs) db.lancamentos,
+                    if (compromissosRefs) db.compromissos,
                   ],
                   addJoins:
                       <
@@ -9511,6 +9636,26 @@ class $$CartoesTableTableManager
                           referencedColumn: 'cartao_id',
                           typedResults: items,
                         ),
+                      if (compromissosRefs)
+                        await $_getPrefetchedDataByColumns<
+                          Cartao,
+                          $CartoesTable,
+                          Compromisso,
+                          $CompromissosTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CartoesTableReferences
+                              ._compromissosRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CartoesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).compromissosRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'cartao_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -9536,6 +9681,7 @@ typedef $$CartoesTableProcessedTableManager =
         bool faturasRefs,
         bool comprasParceladasRefs,
         bool lancamentosRefs,
+        bool compromissosRefs,
       })
     >;
 typedef $$FaturasTableCreateCompanionBuilder = FaturasCompanion Function({
@@ -13141,6 +13287,7 @@ typedef $$CompromissosTableCreateCompanionBuilder =
       Value<int?> categoriaId,
       Value<FormaPagamento> formaPagamento,
       Value<int?> contaId,
+      Value<int?> cartaoId,
       required int valor,
       required int diaVencimento,
       required DateTime dataInicio,
@@ -13155,6 +13302,7 @@ typedef $$CompromissosTableUpdateCompanionBuilder =
       Value<int?> categoriaId,
       Value<FormaPagamento> formaPagamento,
       Value<int?> contaId,
+      Value<int?> cartaoId,
       Value<int> valor,
       Value<int> diaVencimento,
       Value<DateTime> dataInicio,
@@ -13195,6 +13343,23 @@ final class $$CompromissosTableReferences
       $_db.contas,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_contaIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CartoesTable _cartaoIdTable(_$AppDatabase db) =>
+      db.cartoes.createAlias('compromissos__cartao_id__cartoes__id');
+
+  $$CartoesTableProcessedTableManager? get cartaoId {
+    final $_column = $_itemColumn<int>('cartao_id');
+    if ($_column == null) return null;
+    final manager = $$CartoesTableTableManager(
+      $_db,
+      $_db.cartoes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_cartaoIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -13330,6 +13495,29 @@ class $$CompromissosTableFilterComposer
     return composer;
   }
 
+  $$CartoesTableFilterComposer get cartaoId {
+    final $$CartoesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.cartaoId,
+      referencedTable: $db.cartoes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CartoesTableFilterComposer(
+            $db: $db,
+            $table: $db.cartoes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<bool> ocorrenciasCompromissoRefs(
     Expression<bool> Function($$OcorrenciasCompromissoTableFilterComposer f) f,
   ) {
@@ -13456,6 +13644,29 @@ class $$CompromissosTableOrderingComposer
     );
     return composer;
   }
+
+  $$CartoesTableOrderingComposer get cartaoId {
+    final $$CartoesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.cartaoId,
+      referencedTable: $db.cartoes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CartoesTableOrderingComposer(
+            $db: $db,
+            $table: $db.cartoes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$CompromissosTableAnnotationComposer
@@ -13550,6 +13761,29 @@ class $$CompromissosTableAnnotationComposer
     return composer;
   }
 
+  $$CartoesTableAnnotationComposer get cartaoId {
+    final $$CartoesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.cartaoId,
+      referencedTable: $db.cartoes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CartoesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.cartoes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   Expression<T> ocorrenciasCompromissoRefs<T extends Object>(
     Expression<T> Function($$OcorrenciasCompromissoTableAnnotationComposer a) f,
   ) {
@@ -13593,6 +13827,7 @@ class $$CompromissosTableTableManager
           PrefetchHooks Function({
             bool categoriaId,
             bool contaId,
+            bool cartaoId,
             bool ocorrenciasCompromissoRefs,
           })
         > {
@@ -13614,6 +13849,7 @@ class $$CompromissosTableTableManager
                 Value<int?> categoriaId = const Value.absent(),
                 Value<FormaPagamento> formaPagamento = const Value.absent(),
                 Value<int?> contaId = const Value.absent(),
+                Value<int?> cartaoId = const Value.absent(),
                 Value<int> valor = const Value.absent(),
                 Value<int> diaVencimento = const Value.absent(),
                 Value<DateTime> dataInicio = const Value.absent(),
@@ -13626,6 +13862,7 @@ class $$CompromissosTableTableManager
                 categoriaId: categoriaId,
                 formaPagamento: formaPagamento,
                 contaId: contaId,
+                cartaoId: cartaoId,
                 valor: valor,
                 diaVencimento: diaVencimento,
                 dataInicio: dataInicio,
@@ -13640,6 +13877,7 @@ class $$CompromissosTableTableManager
                 Value<int?> categoriaId = const Value.absent(),
                 Value<FormaPagamento> formaPagamento = const Value.absent(),
                 Value<int?> contaId = const Value.absent(),
+                Value<int?> cartaoId = const Value.absent(),
                 required int valor,
                 required int diaVencimento,
                 required DateTime dataInicio,
@@ -13652,6 +13890,7 @@ class $$CompromissosTableTableManager
                 categoriaId: categoriaId,
                 formaPagamento: formaPagamento,
                 contaId: contaId,
+                cartaoId: cartaoId,
                 valor: valor,
                 diaVencimento: diaVencimento,
                 dataInicio: dataInicio,
@@ -13671,6 +13910,7 @@ class $$CompromissosTableTableManager
               ({
                 categoriaId = false,
                 contaId = false,
+                cartaoId = false,
                 ocorrenciasCompromissoRefs = false,
               }) {
                 return PrefetchHooks(
@@ -13713,6 +13953,17 @@ class $$CompromissosTableTableManager
                                 ._contaIdTable(db),
                             referencedColumn: $$CompromissosTableReferences
                                 ._contaIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+                        if (cartaoId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.cartaoId,
+                            referencedTable: $$CompromissosTableReferences
+                                ._cartaoIdTable(db),
+                            referencedColumn: $$CompromissosTableReferences
+                                ._cartaoIdTable(db)
                                 .id,
                           ) as T;
                         }
@@ -13764,6 +14015,7 @@ typedef $$CompromissosTableProcessedTableManager =
       PrefetchHooks Function({
         bool categoriaId,
         bool contaId,
+        bool cartaoId,
         bool ocorrenciasCompromissoRefs,
       })
     >;

@@ -125,6 +125,9 @@ class Compromissos extends Table {
   TextColumn get formaPagamento =>
       textEnum<FormaPagamento>().withDefault(const Constant('boleto'))();
   IntColumn get contaId => integer().nullable().references(Contas, #id)();
+
+  /// Gasto fixo **no crédito**: cartão em que a cobrança cai todo mês.
+  IntColumn get cartaoId => integer().nullable().references(Cartoes, #id)();
   IntColumn get valor => integer()();
   IntColumn get diaVencimento => integer()();
   IntColumn get dataInicio => integer().map(const ConversorData())();

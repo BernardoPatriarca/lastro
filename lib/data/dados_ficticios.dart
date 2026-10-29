@@ -20,31 +20,39 @@ Future<void> popularDadosFicticios(AppDatabase db, {DateTime? hoje}) async {
   final cartaoServ = ServicoCartao(db);
   final compServ = ServicoCompromisso(db);
 
-  final categorias = {for (final c in await db.categoriasDao.todas()) c.nome: c.id};
+  final categorias = {
+    for (final c in await db.categoriasDao.todas()) c.nome: c.id,
+  };
   int? cat(String nome) => categorias[nome];
 
-  final corrente = await db.contasDao.inserir(ContasCompanion.insert(
-    nome: 'Conta Corrente (demo)',
-    tipo: TipoConta.corrente,
-    dataSaldoInicial: inicio.primeiroDia,
-    saldoInicial: const Value(200000),
-  ));
-  final poupanca = await db.contasDao.inserir(ContasCompanion.insert(
-    nome: 'Poupança (demo)',
-    tipo: TipoConta.poupanca,
-    dataSaldoInicial: inicio.primeiroDia,
-    saldoInicial: const Value(800000),
-    considerarNoCreditoSeguro: const Value(false),
-  ));
+  final corrente = await db.contasDao.inserir(
+    ContasCompanion.insert(
+      nome: 'Conta Corrente (demo)',
+      tipo: TipoConta.corrente,
+      dataSaldoInicial: inicio.primeiroDia,
+      saldoInicial: const Value(200000),
+    ),
+  );
+  final poupanca = await db.contasDao.inserir(
+    ContasCompanion.insert(
+      nome: 'Poupança (demo)',
+      tipo: TipoConta.poupanca,
+      dataSaldoInicial: inicio.primeiroDia,
+      saldoInicial: const Value(800000),
+      considerarNoCreditoSeguro: const Value(false),
+    ),
+  );
 
-  final cartaoId = await db.cartoesDao.inserir(CartoesCompanion.insert(
-    nome: 'Cartão Demo',
-    diaFechamento: 10,
-    diaVencimento: 17,
-    limite: const Value(600000),
-    contaPagamentoId: Value(corrente),
-    cor: const Value(0xFF6366F1),
-  ));
+  final cartaoId = await db.cartoesDao.inserir(
+    CartoesCompanion.insert(
+      nome: 'Cartão Demo',
+      diaFechamento: 10,
+      diaVencimento: 17,
+      limite: const Value(600000),
+      contaPagamentoId: Value(corrente),
+      cor: const Value(0xFF6366F1),
+    ),
+  );
   final cartao = (await db.cartoesDao.obter(cartaoId))!;
 
   Future<void> gasto(
@@ -101,8 +109,22 @@ Future<void> popularDadosFicticios(AppDatabase db, {DateTime? hoje}) async {
     await gasto(m, 12, 21050, 'Combustível', 'Posto');
     await gasto(m, 14, 7890, 'Restaurante', 'Almoço de domingo');
     await gasto(m, 20, 5490, 'Delivery', 'Pizza');
-    await gasto(m, 22, 35000, 'Saúde', 'Consulta', forma: FormaPagamento.debito);
-    await gasto(m, 25, 9990, 'Assinaturas', 'Streaming', forma: FormaPagamento.debito);
+    await gasto(
+      m,
+      22,
+      35000,
+      'Saúde',
+      'Consulta',
+      forma: FormaPagamento.debito,
+    );
+    await gasto(
+      m,
+      25,
+      9990,
+      'Assinaturas',
+      'Streaming',
+      forma: FormaPagamento.debito,
+    );
     if (!dia(8).isAfter(agora)) {
       await lanc.registrar(
         tipo: TipoLancamento.aporte,
@@ -126,8 +148,14 @@ Future<void> popularDadosFicticios(AppDatabase db, {DateTime? hoje}) async {
   );
 
   // Compras no crédito (algumas parceladas) para gerar faturas e comprometido.
-  Future<void> credito(int mesesAtras, int dia, int valor, int parcelas, String descricao,
-      String categoria) async {
+  Future<void> credito(
+    int mesesAtras,
+    int dia,
+    int valor,
+    int parcelas,
+    String descricao,
+    String categoria,
+  ) async {
     final c = Competencia.deData(agora).somarMeses(-mesesAtras);
     final data = DateTime(c.ano, c.mes, dia);
     if (data.isAfter(agora)) return;
@@ -152,7 +180,11 @@ Future<void> popularDadosFicticios(AppDatabase db, {DateTime? hoje}) async {
     if (f.dataVencimento.isBefore(agora.subtract(const Duration(days: 1)))) {
       final total = await cartaoServ.totalDaFatura(f.id);
       if (total > 0) {
-        await cartaoServ.pagarFatura(fatura: f, contaId: corrente, data: f.dataVencimento);
+        await cartaoServ.pagarFatura(
+          fatura: f,
+          contaId: corrente,
+          data: f.dataVencimento,
+        );
       }
     }
   }
@@ -181,25 +213,46 @@ Future<void> popularDadosFicticios(AppDatabase db, {DateTime? hoje}) async {
     valor: 62000,
     tipo: TipoCompromisso.parcelado,
     numeroParcelas: 12,
-    dataInicio: DateTime(Competencia.deData(agora).somarMeses(-1).ano,
-        Competencia.deData(agora).somarMeses(-1).mes, 20),
+    dataInicio: DateTime(
+      Competencia.deData(agora).somarMeses(-1).ano,
+      Competencia.deData(agora).somarMeses(-1).mes,
+      20,
+    ),
     forma: FormaPagamento.boleto,
     categoriaId: cat('Transporte/Carro'),
     contaId: corrente,
   );
+  // Assinatura no crédito: a cobrança entra sozinha na fatura todo mês.
+  await compServ.criarCompromisso(
+    descricao: 'Streaming (cartão)',
+    valor: 3990,
+    tipo: TipoCompromisso.recorrente,
+    dataInicio: DateTime(inicio.ano, inicio.mes, 12),
+    forma: FormaPagamento.credito,
+    categoriaId: cat('Assinaturas'),
+    cartaoId: cartaoId,
+  );
+
   // Contas de meses anteriores ao atual já foram pagas (só o mês atual fica
   // pendente), como numa vida financeira em dia.
   final inicioDoMes = Competencia.deData(agora).primeiroDia;
   for (final o in await db.compromissosDao.todasOcorrencias()) {
-    if (o.dataVencimento.isBefore(inicioDoMes)) {
+    if (o.status == StatusOcorrencia.pendente &&
+        o.dataVencimento.isBefore(inicioDoMes)) {
       await compServ.pagarOcorrencia(o, data: o.dataVencimento);
     }
   }
 
   // Investimentos, metas e orçamento do mês.
   final inv = ServicoInvestimento(db);
-  final reserva = await inv.criar(nome: 'Reserva de emergência', tipo: TipoInvestimento.reserva);
-  final cdb = await inv.criar(nome: 'CDB Banco Demo', tipo: TipoInvestimento.cdb);
+  final reserva = await inv.criar(
+    nome: 'Reserva de emergência',
+    tipo: TipoInvestimento.reserva,
+  );
+  final cdb = await inv.criar(
+    nome: 'CDB Banco Demo',
+    tipo: TipoInvestimento.cdb,
+  );
   for (var m = 3; m >= 0; m--) {
     final base = Competencia.deData(agora).somarMeses(-m);
     final data = DateTime(base.ano, base.mes, 8);
@@ -238,5 +291,4 @@ Future<void> popularDadosFicticios(AppDatabase db, {DateTime? hoje}) async {
     diaPrevisto: 5,
     categoriaId: cat('Salário'),
   );
-
 }

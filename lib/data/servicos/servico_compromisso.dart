@@ -4,14 +4,18 @@ import '../../domain/competencia.dart';
 import '../../domain/datas.dart';
 import '../../domain/compromissos.dart';
 import '../../domain/enums.dart';
+import '../../domain/fatura.dart';
 import '../../domain/parcelas.dart';
 import '../banco.dart';
 import '../daos/compromissos_dao.dart';
 import '../compromisso_calculo.dart';
-import 'servico_cartao.dart' show OperacaoInvalida;
+import 'servico_cartao.dart';
 
-/// Compromissos (gastos fixos fora do cartão), suas ocorrências mensais e
-/// receitas recorrentes.
+/// Compromissos (gastos fixos), suas ocorrências mensais e receitas
+/// recorrentes.
+///
+/// Gasto fixo **no crédito** (ex.: assinatura): em vez de uma conta pendente
+/// para pagar, a cobrança entra sozinha na fatura do cartão todo mês.
 class ServicoCompromisso {
   ServicoCompromisso(this._db);
   final AppDatabase _db;
@@ -32,8 +36,19 @@ class ServicoCompromisso {
     int? numeroParcelas,
     int? categoriaId,
     int? contaId,
+    int? cartaoId,
     DateTime? hoje,
   }) async {
+    if (forma == FormaPagamento.credito) {
+      if (cartaoId == null) {
+        throw const OperacaoInvalida('Escolha o cartão do gasto fixo.');
+      }
+      if (tipo != TipoCompromisso.recorrente) {
+        throw const OperacaoInvalida(
+          'No crédito, o gasto fixo é recorrente. Para parcelar, use as parcelas da compra.',
+        );
+      }
+    }
     final id = await _dao.inserirCompromisso(CompromissosCompanion.insert(
       descricao: descricao.trim(),
       valor: valor,
@@ -43,7 +58,8 @@ class ServicoCompromisso {
       numeroParcelas: Value(tipo == TipoCompromisso.parcelado ? numeroParcelas : null),
       formaPagamento: Value(forma),
       categoriaId: Value(categoriaId),
-      contaId: Value(contaId),
+      contaId: Value(forma == FormaPagamento.credito ? null : contaId),
+      cartaoId: Value(forma == FormaPagamento.credito ? cartaoId : null),
     ));
     await gerarOcorrencias(hoje: hoje);
     return id;
@@ -59,9 +75,12 @@ class ServicoCompromisso {
     FormaPagamento? forma,
     int? categoriaId,
     int? contaId,
+    int? cartaoId,
     bool? ativo,
     DateTime? hoje,
   }) async {
+    // Cobranças futuras já lançadas no cartão são refeitas com os novos dados.
+    await _removerCobrancasFuturas(c.id, hoje: hoje);
     await _dao.atualizarCompromisso(c.copyWith(
       descricao: descricao?.trim(),
       valor: valor,
@@ -69,13 +88,80 @@ class ServicoCompromisso {
       formaPagamento: forma,
       categoriaId: Value(categoriaId ?? c.categoriaId),
       contaId: Value(contaId ?? c.contaId),
+      cartaoId: Value(cartaoId ?? c.cartaoId),
       ativo: ativo,
     ));
     await _dao.excluirPendentesDe(c.id);
     await gerarOcorrencias(hoje: hoje);
   }
 
-  Future<void> excluirCompromisso(int id) => _dao.excluirCompromisso(id);
+  Future<void> excluirCompromisso(int id) async {
+    await _removerCobrancasFuturas(id);
+    await _dao.excluirCompromisso(id);
+  }
+
+  /// Apaga as cobranças **futuras** (data depois de hoje) que um gasto fixo no
+  /// crédito já lançou nas faturas, junto com suas ocorrências. As de hoje e do
+  /// passado ficam. Faturas já pagas nunca são mexidas.
+  Future<void> _removerCobrancasFuturas(int compromissoId, {DateTime? hoje}) async {
+    final dia = soData(hoje ?? DateTime.now());
+    await _db.transaction(() async {
+      for (final o in await _dao.todasOcorrencias()) {
+        if (o.compromissoId != compromissoId) continue;
+        if (o.status != StatusOcorrencia.paga || !o.dataVencimento.isAfter(dia)) continue;
+        final lancId = o.lancamentoId;
+        if (lancId != null) {
+          final l = await _db.lancamentosDao.obter(lancId);
+          // Só mexe em cobrança de cartão (gasto na conta já foi pago de verdade).
+          if (l == null || l.formaPagamento != FormaPagamento.credito) continue;
+          final fatura = l.faturaId == null ? null : await _db.cartoesDao.faturaPorId(l.faturaId!);
+          if (fatura?.status == StatusFatura.paga) continue;
+          await _db.lancamentosDao.excluir(lancId);
+        }
+        await _dao.excluirOcorrencia(o.id);
+      }
+    });
+  }
+
+  /// Lança a cobrança [o] do gasto fixo [c] na fatura do cartão e marca a
+  /// ocorrência como resolvida. Se a fatura daquele ciclo já foi paga, a
+  /// cobrança cai no ciclo seguinte (não se mexe em fatura paga).
+  Future<void> _lancarCobrancaNoCartao(Compromisso c, OcorrenciaPrevista o) async {
+    final cartao = c.cartaoId == null ? null : await _db.cartoesDao.obter(c.cartaoId!);
+    if (cartao == null || !cartao.ativo) return;
+    await _db.transaction(() async {
+      var data = o.dataVencimento;
+      final ciclo = cicloDaCompra(
+        data,
+        diaFechamento: cartao.diaFechamento,
+        diaVencimento: cartao.diaVencimento,
+      );
+      final fatura = await _db.cartoesDao.faturaDaCompetencia(cartao.id, ciclo.competencia.chave);
+      if (fatura?.status == StatusFatura.paga) data = ciclo.dataFechamento;
+
+      final ocId = await _dao.inserirOcorrencia(OcorrenciasCompromissoCompanion.insert(
+        compromissoId: c.id,
+        competencia: o.competencia.chave,
+        valor: o.valor,
+        dataVencimento: o.dataVencimento,
+        numeroParcela: Value(o.numeroParcela),
+        status: const Value(StatusOcorrencia.paga),
+      ));
+      if (ocId <= 0) return;
+      final ids = await ServicoCartao(_db).registrarCompra(
+        cartao: cartao,
+        valorTotal: o.valor,
+        parcelas: 1,
+        data: data,
+        descricao: c.descricao,
+        categoriaId: c.categoriaId,
+      );
+      final l = (await _db.lancamentosDao.obter(ids.first))!;
+      await _db.lancamentosDao.atualizar(l.copyWith(ocorrenciaCompromissoId: Value(ocId)));
+      final oc = (await _dao.ocorrencia(ocId))!;
+      await _dao.atualizarOcorrencia(oc.copyWith(lancamentoId: Value(l.id)));
+    });
+  }
 
   /// Gera as ocorrências que faltam até o mês seguinte ao de [hoje].
   ///
@@ -99,6 +185,10 @@ class ServicoCompromisso {
       final faltantes = ocorrenciasFaltantes(geradas, existentes)
           .where((o) => o.competencia >= piso);
       for (final o in faltantes) {
+        if (c.formaPagamento == FormaPagamento.credito) {
+          await _lancarCobrancaNoCartao(c, o);
+          continue;
+        }
         await _dao.inserirOcorrencia(OcorrenciasCompromissoCompanion.insert(
           compromissoId: c.id,
           competencia: o.competencia.chave,
@@ -181,11 +271,14 @@ class ServicoCompromisso {
   Future<void> reabrirOcorrenciaDoLancamento(int lancamentoId) async {
     final todas = await _dao.todasOcorrencias();
     for (final o in todas.where((o) => o.lancamentoId == lancamentoId)) {
+      final c = await _dao.compromisso(o.compromissoId);
+      // Cobrança no crédito não tem "pagar": apagar o lançamento só a dispensa.
+      final credito = c?.formaPagamento == FormaPagamento.credito;
       await _dao.atualizarOcorrencia(o.copyWith(
-        status: StatusOcorrencia.pendente,
+        status: credito ? StatusOcorrencia.paga : StatusOcorrencia.pendente,
         lancamentoId: const Value(null),
       ));
-      final c = await _dao.compromisso(o.compromissoId);
+      if (credito) continue;
       if (c != null && !c.ativo) {
         await _dao.atualizarCompromisso(c.copyWith(ativo: true));
       }

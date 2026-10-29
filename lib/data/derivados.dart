@@ -419,7 +419,9 @@ final contasDoMesProvider = Provider<List<ContaDoMes>>((ref) {
         .add(Competencia.parse(o.competencia));
     if (!mes.contem(o.dataVencimento)) continue;
     final c = compromissos[o.compromissoId];
-    if (c == null) continue;
+    // Gasto fixo no crédito já está dentro da fatura do cartão (que aparece
+    // aqui com o total): listá-lo de novo contaria duas vezes.
+    if (c == null || c.formaPagamento == FormaPagamento.credito) continue;
     itens.add(ContaDoMes(
       descricao: o.numeroParcela == null
           ? c.descricao
@@ -434,7 +436,7 @@ final contasDoMesProvider = Provider<List<ContaDoMes>>((ref) {
 
   // Meses futuros: contas fixas ainda não geradas, só para enxergar o peso.
   for (final c in compromissos.values) {
-    if (!c.ativo) continue;
+    if (!c.ativo || c.formaPagamento == FormaPagamento.credito) continue;
     final ja = geradas[c.id] ?? const <Competencia>{};
     for (final o in ocorrenciasDe(c, mes)) {
       if (o.competencia != mes || ja.contains(o.competencia)) continue;

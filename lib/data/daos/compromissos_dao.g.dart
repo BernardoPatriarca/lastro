@@ -6,6 +6,7 @@ part of 'compromissos_dao.dart';
 mixin _$CompromissosDaoMixin on DatabaseAccessor<AppDatabase> {
   $CategoriasTable get categorias => attachedDatabase.categorias;
   $ContasTable get contas => attachedDatabase.contas;
+  $CartoesTable get cartoes => attachedDatabase.cartoes;
   $CompromissosTable get compromissos => attachedDatabase.compromissos;
   $OcorrenciasCompromissoTable get ocorrenciasCompromisso =>
       attachedDatabase.ocorrenciasCompromisso;
@@ -21,6 +22,8 @@ class CompromissosDaoManager {
       $$CategoriasTableTableManager(_db.attachedDatabase, _db.categorias);
   $$ContasTableTableManager get contas =>
       $$ContasTableTableManager(_db.attachedDatabase, _db.contas);
+  $$CartoesTableTableManager get cartoes =>
+      $$CartoesTableTableManager(_db.attachedDatabase, _db.cartoes);
   $$CompromissosTableTableManager get compromissos =>
       $$CompromissosTableTableManager(_db.attachedDatabase, _db.compromissos);
   $$OcorrenciasCompromissoTableTableManager get ocorrenciasCompromisso =>

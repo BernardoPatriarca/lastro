@@ -335,7 +335,7 @@ class _RevisaoState extends ConsumerState<RevisaoImportacaoPage> {
                                     Chip(
                                       avatar: Icon(Icons.copy_all_rounded, size: 16,
                                           color: context.coresLastro.alerta),
-                                      label: const Text('Já importada'),
+                                      label: Text(l.porGastoFixo ? 'Já lançada (gasto fixo)' : 'Já importada'),
                                       visualDensity: VisualDensity.compact,
                                     ),
                                 ],

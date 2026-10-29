@@ -57,6 +57,9 @@ class CompromissosDao extends DatabaseAccessor<AppDatabase>
   Future<bool> atualizarOcorrencia(OcorrenciaCompromisso o) =>
       update(ocorrenciasCompromisso).replace(o);
 
+  Future<int> excluirOcorrencia(int id) =>
+      (delete(ocorrenciasCompromisso)..where((o) => o.id.equals(id))).go();
+
   /// Remove ocorrências pendentes de um compromisso (ao editar valor/dia).
   Future<int> excluirPendentesDe(int compromissoId) =>
       (delete(ocorrenciasCompromisso)

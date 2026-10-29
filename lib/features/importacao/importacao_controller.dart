@@ -43,10 +43,16 @@ class LinhaRevisao {
     this.categoriaManual = false,
     this.ocorrenciaId,
     this.usarOcorrencia = false,
+    this.porGastoFixo = false,
   });
 
   final TransacaoImportada transacao;
+
   final bool selecionada;
+
+  /// Já foi lançada automaticamente por um gasto fixo no crédito do cartão
+  /// (ex.: assinatura): importar de novo duplicaria a cobrança.
+  final bool porGastoFixo;
 
   /// Já importada antes (chave de importação existente).
   final bool duplicada;
@@ -73,6 +79,7 @@ class LinhaRevisao {
         categoriaManual: categoriaManual ?? this.categoriaManual,
         ocorrenciaId: ocorrenciaId,
         usarOcorrencia: usarOcorrencia ?? this.usarOcorrencia,
+        porGastoFixo: porGastoFixo,
       );
 }
 
@@ -237,14 +244,28 @@ class ImportacaoController extends Notifier<EstadoImportacao> {
         : const <int, int>{};
 
     final cartao = state.destino == TipoDestino.cartao;
+
+    // Fatura de cartão: cobranças de gasto fixo no crédito já foram lançadas
+    // sozinhas. Mesmo valor perto da data = a mesma cobrança: fica desmarcada.
+    final porFixo = <int, int>{};
+    if (cartao && state.cartaoId != null) {
+      porFixo.addAll(casarComOcorrencias(comChave, [
+        for (final l in await db.lancamentosDao.todos())
+          if (l.cartaoId == state.cartaoId && l.ocorrenciaCompromissoId != null)
+            OcorrenciaPendenteSimples(id: l.id, valor: l.valor, vencimento: l.data),
+      ]));
+    }
+
     state = state.copiar(linhas: [
       for (var i = 0; i < comChave.length; i++)
         LinhaRevisao(
           transacao: comChave[i],
-          duplicada: duplicadas.contains(comChave[i].chave),
+          duplicada: duplicadas.contains(comChave[i].chave) || porFixo.containsKey(i),
+          porGastoFixo: porFixo.containsKey(i),
           // Duplicadas ficam desmarcadas. Em fatura de cartão, entradas
           // (estornos, "pagamento recebido") também começam desmarcadas.
           selecionada: !duplicadas.contains(comChave[i].chave) &&
+              !porFixo.containsKey(i) &&
               !(cartao && !comChave[i].ehSaida),
           categoriaId: categoriaSugerida(comChave[i].descricao, regras),
           ocorrenciaId: casamento[i],

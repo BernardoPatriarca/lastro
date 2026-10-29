@@ -7,10 +7,12 @@ import '../../core/widgets/campo_valor.dart';
 import '../../data/banco.dart';
 import '../../data/derivados.dart';
 import '../../data/providers.dart';
+import '../../data/servicos/servico_cartao.dart';
 import '../../data/servicos/servicos.dart';
 import '../../domain/datas.dart';
 import '../../domain/enums.dart';
 import '../categorias/seletor_categoria.dart';
+import '../lancamentos/lancamento_acoes.dart';
 
 /// Cadastro/edição de gasto fixo (recorrente ou parcelado) fora do cartão.
 ///
@@ -36,6 +38,8 @@ class _CompromissoFormPageState extends ConsumerState<CompromissoFormPage> {
   DateTime _inicio = soData(DateTime.now());
   FormaPagamento _forma = FormaPagamento.boleto;
   int? _contaId;
+  int? _cartaoId;
+  FormaPagamento? _formaOriginal;
   int? _categoriaId;
   bool _ativo = true;
 
@@ -67,6 +71,8 @@ class _CompromissoFormPageState extends ConsumerState<CompromissoFormPage> {
       _inicio = c.dataInicio;
       _forma = c.formaPagamento;
       _contaId = c.contaId;
+      _cartaoId = c.cartaoId;
+      _formaOriginal = c.formaPagamento;
       _categoriaId = c.categoriaId;
       _ativo = c.ativo;
     });
@@ -84,28 +90,42 @@ class _CompromissoFormPageState extends ConsumerState<CompromissoFormPage> {
     final servico = ref.read(servicoCompromissoProvider);
     final contas = ref.read(contasAtivasProvider);
     final contaId = _contaId ?? (contas.isNotEmpty ? contas.first.id : null);
+    final cartoes = [for (final c in ref.read(cartoesProvider).ou) if (c.ativo) c];
+    final cartaoId = _cartaoId ?? (cartoes.isNotEmpty ? cartoes.first.id : null);
+    final credito = _forma == FormaPagamento.credito;
+    if (credito && cartaoId == null) {
+      mostrarAviso(context, 'Cadastre um cartão antes de criar um gasto fixo no crédito.');
+      return;
+    }
     final o = _original;
-    if (o == null) {
-      await servico.criarCompromisso(
-        descricao: _descricao.text,
-        valor: _valor.centavos,
-        tipo: _tipo,
-        dataInicio: _inicio,
-        numeroParcelas: _parcelas,
-        forma: _forma,
-        categoriaId: _categoriaId,
-        contaId: contaId,
-      );
-    } else {
-      await servico.atualizarCompromisso(
-        o,
-        descricao: _descricao.text,
-        valor: _valor.centavos,
-        forma: _forma,
-        categoriaId: _categoriaId,
-        contaId: contaId,
-        ativo: _ativo,
-      );
+    try {
+      if (o == null) {
+        await servico.criarCompromisso(
+          descricao: _descricao.text,
+          valor: _valor.centavos,
+          tipo: credito ? TipoCompromisso.recorrente : _tipo,
+          dataInicio: _inicio,
+          numeroParcelas: _parcelas,
+          forma: _forma,
+          categoriaId: _categoriaId,
+          contaId: credito ? null : contaId,
+          cartaoId: credito ? cartaoId : null,
+        );
+      } else {
+        await servico.atualizarCompromisso(
+          o,
+          descricao: _descricao.text,
+          valor: _valor.centavos,
+          forma: _forma,
+          categoriaId: _categoriaId,
+          contaId: credito ? null : contaId,
+          cartaoId: credito ? cartaoId : null,
+          ativo: _ativo,
+        );
+      }
+    } on OperacaoInvalida catch (e) {
+      if (mounted) mostrarAviso(context, e.mensagem);
+      return;
     }
     if (mounted) context.pop();
   }
@@ -138,6 +158,10 @@ class _CompromissoFormPageState extends ConsumerState<CompromissoFormPage> {
   Widget build(BuildContext context) {
     final contas = ref.watch(contasAtivasProvider);
     final contaValida = contas.any((c) => c.id == _contaId) ? _contaId : null;
+    final cartoes = [for (final c in ref.watch(cartoesProvider).ou) if (c.ativo) c];
+    final cartaoValido = cartoes.any((c) => c.id == _cartaoId)
+        ? _cartaoId
+        : (cartoes.isNotEmpty ? cartoes.first.id : null);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -188,10 +212,21 @@ class _CompromissoFormPageState extends ConsumerState<CompromissoFormPage> {
                                 _valor.centavos <= 0 ? 'Informe o valor' : null,
                           ),
                           const SizedBox(height: 20),
+                          if (_forma == FormaPagamento.credito && !_edicao)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                'No crédito o gasto fixo é recorrente (sem fim): a cobrança entra '
+                                'sozinha na fatura todo mês. Para parcelar, use as parcelas da compra.',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                            ),
                           IgnorePointer(
-                            ignoring: _edicao,
+                            ignoring: _edicao || _forma == FormaPagamento.credito,
                             child: Opacity(
-                              opacity: _edicao ? 0.55 : 1,
+                              opacity: (_edicao || _forma == FormaPagamento.credito) ? 0.55 : 1,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -277,27 +312,50 @@ class _CompromissoFormPageState extends ConsumerState<CompromissoFormPage> {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              for (final f in FormaPagamento.values.where((f) => f != FormaPagamento.credito))
-                                ChoiceChip(
-                                  label: Text(f.rotulo),
-                                  selected: _forma == f,
-                                  showCheckmark: false,
-                                  onSelected: (_) => setState(() => _forma = f),
-                                ),
+                              for (final f in FormaPagamento.values)
+                                // Ao editar, não troca entre crédito e as demais
+                                // formas (as cobranças já lançadas ficariam órfãs).
+                                if (!_edicao ||
+                                    (f == FormaPagamento.credito) ==
+                                        (_formaOriginal == FormaPagamento.credito))
+                                  ChoiceChip(
+                                    label: Text(f.rotulo),
+                                    selected: _forma == f,
+                                    showCheckmark: false,
+                                    onSelected: (_) => setState(() {
+                                      _forma = f;
+                                      if (f == FormaPagamento.credito) {
+                                        _tipo = TipoCompromisso.recorrente;
+                                      }
+                                    }),
+                                  ),
                             ],
                           ),
                           const SizedBox(height: 20),
-                          DropdownButtonFormField<int>(
-                            key: ValueKey('${contas.length}-$contaValida'),
-                            initialValue: contaValida,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Conta que paga',
-                              prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                          if (_forma == FormaPagamento.credito)
+                            DropdownButtonFormField<int>(
+                              key: ValueKey('${cartoes.length}-$cartaoValido'),
+                              initialValue: cartaoValido,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Cartão da cobrança',
+                                prefixIcon: Icon(Icons.credit_card_rounded),
+                              ),
+                              items: [for (final c in cartoes) DropdownMenuItem(value: c.id, child: Text(c.nome))],
+                              onChanged: (v) => setState(() => _cartaoId = v),
+                            )
+                          else
+                            DropdownButtonFormField<int>(
+                              key: ValueKey('${contas.length}-$contaValida'),
+                              initialValue: contaValida,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Conta que paga',
+                                prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                              ),
+                              items: [for (final c in contas) DropdownMenuItem(value: c.id, child: Text(c.nome))],
+                              onChanged: (v) => setState(() => _contaId = v),
                             ),
-                            items: [for (final c in contas) DropdownMenuItem(value: c.id, child: Text(c.nome))],
-                            onChanged: (v) => setState(() => _contaId = v),
-                          ),
                           if (_edicao)
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,

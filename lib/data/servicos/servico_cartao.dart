@@ -53,8 +53,9 @@ class ServicoCartao {
       );
 
   /// Registra uma compra no crédito. Em [parcelas] > 1 cria a compra parcelada
-  /// e um lançamento por parcela, cada um na fatura certa.
-  Future<void> registrarCompra({
+  /// e um lançamento por parcela, cada um na fatura certa. Devolve os ids dos
+  /// lançamentos criados (um por parcela).
+  Future<List<int>> registrarCompra({
     required Cartao cartao,
     required int valorTotal,
     required int parcelas,
@@ -65,6 +66,7 @@ class ServicoCartao {
     String? chaveImportacao,
   }) {
     return _db.transaction(() async {
+      final ids = <int>[];
       final dia = soData(data);
       int? compraId;
       if (parcelas > 1) {
@@ -87,7 +89,7 @@ class ServicoCartao {
       );
       for (final p in geradas) {
         final fatura = await obterOuCriarFatura(cartao, p.ciclo);
-        await _lancs.inserir(LancamentosCompanion.insert(
+        ids.add(await _lancs.inserir(LancamentosCompanion.insert(
           tipo: TipoLancamento.gasto,
           valor: p.valor,
           data: p.data,
@@ -101,8 +103,9 @@ class ServicoCartao {
           origem: Value(origem),
           // Só a compra à vista (ou a 1ª parcela) carrega a chave de importação.
           chaveImportacao: Value(p.numero == 1 ? chaveImportacao : null),
-        ));
+        )));
       }
+      return ids;
     });
   }
 
@@ -195,7 +198,14 @@ class ServicoCartao {
   Future<void> excluirCompra(Lancamento l, EscopoParcelas escopo) async {
     if (l.compraParceladaId == null) {
       await _garantirFaturaNaoPaga(l);
-      await _lancs.excluir(l.id);
+      await _db.transaction(() async {
+        // Cobrança de gasto fixo no crédito: apagar este mês a dispensa (a
+        // ocorrência fica como resolvida, para não ser gerada de novo).
+        if (l.ocorrenciaCompromissoId != null) {
+          await _dispensarOcorrenciaDe(l.id);
+        }
+        await _lancs.excluir(l.id);
+      });
       return;
     }
     final alvos = await _alvos(l, escopo);
@@ -209,6 +219,19 @@ class ServicoCartao {
       final restantes = await _lancs.daCompra(l.compraParceladaId!);
       if (restantes.isEmpty) await _lancs.excluirCompra(l.compraParceladaId!);
     });
+  }
+
+  /// Marca como resolvida (sem lançamento) a ocorrência de gasto fixo no crédito
+  /// ligada ao lançamento [lancamentoId].
+  Future<void> _dispensarOcorrenciaDe(int lancamentoId) async {
+    final dao = _db.compromissosDao;
+    for (final o in await dao.todasOcorrencias()) {
+      if (o.lancamentoId != lancamentoId) continue;
+      await dao.atualizarOcorrencia(o.copyWith(
+        status: StatusOcorrencia.paga,
+        lancamentoId: const Value(null),
+      ));
+    }
   }
 
   /// Total (centavos) das compras de uma fatura.

@@ -53,7 +53,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   /// Versão do schema. Ao mudar tabelas: incremente e trate em [onUpgrade].
-  static const versaoSchema = 2;
+  static const versaoSchema = 3;
 
   @override
   int get schemaVersion => versaoSchema;
@@ -74,6 +74,13 @@ class AppDatabase extends _$AppDatabase {
               "UPDATE configuracoes SET valor = 'parcela' "
               "WHERE chave = 'modo_parcelados' AND valor = 'rigido'",
             );
+          }
+          if (de < 3) {
+            // v3: gasto fixo no crédito (cartão do compromisso).
+            final colunas = await customSelect('PRAGMA table_info(compromissos)').get();
+            if (!colunas.any((c) => c.read<String>('name') == 'cartao_id')) {
+              await m.addColumn(compromissos, compromissos.cartaoId);
+            }
           }
         },
         beforeOpen: (detalhes) async {
